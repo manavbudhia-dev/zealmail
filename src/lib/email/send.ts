@@ -18,6 +18,7 @@ import { ensureTrackingToken, getTrackingHostForSender } from "@/lib/tracking/op
 import { setFollowUp } from "@/lib/follow-ups/service";
 import { buildTrackingPixelUrl, injectTrackingPixel, resolveTrackingOrigin } from "@/lib/tracking/open-tracking-utils";
 import { getComposePreferences } from "@/lib/compose/preferences";
+import { deleteMessageWithObjects } from "@/lib/email/message-cleanup";
 
 export type SendEmailInput = {
 	userId: string;
@@ -145,31 +146,41 @@ export async function sendEmail(
 		inReplyTo,
 		references: references.length ? references.join(" ") : null,
 	});
+	// Each step below undoes the earlier ones when it fails, so a failed send never leaves a
+	// "queued" message with no job behind it (stuck in the outbox and never delivered).
+	const discardMessage = () => deleteMessageWithObjects(env, db, messageId, null)
+		.catch((error) => console.error(`Cleanup of unsent message ${messageId} failed`, error));
 	try {
 		const stored = await storeMessageAttachments(env, messageId, attachments);
 		stored.forEach((attachment, index) => { attachments[index].storageId = attachment.id; });
 	} catch (error) {
-		await db.delete(messages).where(eq(messages.id, messageId));
+		// Attachments stored before the failure are removed with the message.
+		await discardMessage();
 		throw error;
 	}
 
 	const jobId = newId("job");
-	await db.insert(outboundJobs).values({
-		id: jobId,
-		userId: input.userId,
-		messageId,
-		status: "queued",
-		payload: JSON.stringify({
-			...input,
-			from: sender.fromAddr,
-			to,
-			cc,
-			bcc,
-			mailboxId: sender.mailboxId,
-			attachments: attachments.map(({ content: _content, ...attachment }) => attachment),
-		}),
-		scheduledAt,
-	});
+	try {
+		await db.insert(outboundJobs).values({
+			id: jobId,
+			userId: input.userId,
+			messageId,
+			status: "queued",
+			payload: JSON.stringify({
+				...input,
+				from: sender.fromAddr,
+				to,
+				cc,
+				bcc,
+				mailboxId: sender.mailboxId,
+				attachments: attachments.map(({ content: _content, ...attachment }) => attachment),
+			}),
+			scheduledAt,
+		});
+	} catch (error) {
+		await discardMessage();
+		throw error;
+	}
 
 	const delivery: PreparedDelivery = {
 		input: { ...input, attachments: undefined },
@@ -184,7 +195,20 @@ export async function sendEmail(
 		attachments,
 	};
 	if (scheduledAt) {
-		await enqueueScheduledDelivery(env, delivery, scheduledAt);
+		try {
+			await enqueueScheduledDelivery(env, delivery, scheduledAt);
+		} catch (error) {
+			// Nothing will wake the job, and the caller is told the send failed, so a retry
+			// from the composer must not find a second copy waiting. Undo it unless something
+			// already claimed it.
+			const removed = await db
+				.delete(outboundJobs)
+				.where(and(eq(outboundJobs.id, jobId), eq(outboundJobs.status, "queued")))
+				.returning({ id: outboundJobs.id })
+				.catch(() => []);
+			if (removed.length) await discardMessage();
+			throw error;
+		}
 		if (userScheduledAt) {
 			return { messageId, scheduled: true, scheduledAt: scheduledAt.toISOString() };
 		}
