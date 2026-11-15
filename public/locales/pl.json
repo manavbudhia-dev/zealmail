@@ -2493,5 +2493,16 @@
 	"summary.hide": "Ukryj podsumowanie",
 	"summary.disclaimer": "Napisane przez AI. Sprawdź ważne szczegóły w wiadomościach.",
 	"summary.failed": "Nie udało się podsumować tej rozmowy. Spróbuj ponownie.",
-	"summary.rateLimited": "Zbyt wiele podsumowań naraz. Spróbuj ponownie za minutę."
+	"summary.rateLimited": "Zbyt wiele podsumowań naraz. Spróbuj ponownie za minutę.",
+	"navigation.help": "Pomoc",
+	"navigation.sidePanel": "Panel boczny",
+	"list.refresh": "Odśwież",
+	"list.selectMenu": "Zaznacz",
+	"list.select.all": "Wszystkie",
+	"list.select.read": "Przeczytane",
+	"list.moreActions": "Więcej",
+	"list.markAllRead": "Oznacz wszystkie jako przeczytane",
+	"admin.search.placeholder": "Szukaj użytkowników, ustawień lub funkcji",
+	"admin.search.noResults": "Brak pasujących ustawień",
+	"update.checkButton": "Sprawdź aktualizacje"
 }

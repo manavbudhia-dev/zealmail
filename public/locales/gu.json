@@ -2463,5 +2463,16 @@
 	"summary.hide": "સારાંશ છુપાવો",
 	"summary.disclaimer": "AI દ્વારા લખાયેલ. મહત્વની વિગતો સંદેશાઓમાં તપાસો.",
 	"summary.failed": "આ વાતચીતનો સારાંશ બનાવી શકાયો નહીં. ફરી પ્રયાસ કરો.",
-	"summary.rateLimited": "અત્યારે ઘણા બધા સારાંશ વિનંતીઓ છે. એક મિનિટ પછી ફરી પ્રયાસ કરો."
+	"summary.rateLimited": "અત્યારે ઘણા બધા સારાંશ વિનંતીઓ છે. એક મિનિટ પછી ફરી પ્રયાસ કરો.",
+	"navigation.help": "મદદ",
+	"navigation.sidePanel": "બાજુ પેનલ",
+	"list.refresh": "રિફ્રેશ",
+	"list.selectMenu": "પસંદ કરો",
+	"list.select.all": "બધા",
+	"list.select.read": "વાંચેલા",
+	"list.moreActions": "વધુ",
+	"list.markAllRead": "બધાને વાંચેલા તરીકે ચિહ્નિત કરો",
+	"admin.search.placeholder": "વપરાશકર્તાઓ, સેટિંગ્સ અથવા સુવિધાઓ શોધો",
+	"admin.search.noResults": "કોઈ મેળ ખાતી સેટિંગ નથી",
+	"update.checkButton": "અપડેટ્સ તપાસો"
 }

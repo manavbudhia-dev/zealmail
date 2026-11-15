@@ -2523,5 +2523,16 @@
 	"summary.hide": "إخفاء الملخص",
 	"summary.disclaimer": "كتبه الذكاء الاصطناعي. تحقق من التفاصيل المهمة في الرسائل.",
 	"summary.failed": "تعذّر تلخيص هذه المحادثة. حاول مرة أخرى.",
-	"summary.rateLimited": "طلبات تلخيص كثيرة الآن. حاول مرة أخرى بعد دقيقة."
+	"summary.rateLimited": "طلبات تلخيص كثيرة الآن. حاول مرة أخرى بعد دقيقة.",
+	"navigation.help": "مساعدة",
+	"navigation.sidePanel": "اللوحة الجانبية",
+	"list.refresh": "تحديث",
+	"list.selectMenu": "تحديد",
+	"list.select.all": "الكل",
+	"list.select.read": "المقروءة",
+	"list.moreActions": "المزيد",
+	"list.markAllRead": "وضع علامة مقروءة على الكل",
+	"admin.search.placeholder": "ابحث عن المستخدمين أو الإعدادات أو الميزات",
+	"admin.search.noResults": "لا توجد إعدادات مطابقة",
+	"update.checkButton": "التحقق من وجود تحديثات"
 }

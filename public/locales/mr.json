@@ -2463,5 +2463,16 @@
 	"summary.hide": "सारांश लपवा",
 	"summary.disclaimer": "AI ने लिहिले. महत्त्वाचे तपशील संदेशांमध्ये तपासा.",
 	"summary.failed": "या संभाषणाचा सारांश तयार करता आला नाही. पुन्हा प्रयत्न करा.",
-	"summary.rateLimited": "सध्या खूप सारांश विनंत्या आहेत. एका मिनिटाने पुन्हा प्रयत्न करा."
+	"summary.rateLimited": "सध्या खूप सारांश विनंत्या आहेत. एका मिनिटाने पुन्हा प्रयत्न करा.",
+	"navigation.help": "मदत",
+	"navigation.sidePanel": "बाजूचे पॅनेल",
+	"list.refresh": "रीफ्रेश करा",
+	"list.selectMenu": "निवडा",
+	"list.select.all": "सर्व",
+	"list.select.read": "वाचलेले",
+	"list.moreActions": "आणखी",
+	"list.markAllRead": "सर्व वाचलेले म्हणून चिन्हांकित करा",
+	"admin.search.placeholder": "वापरकर्ते, सेटिंग्ज किंवा वैशिष्ट्ये शोधा",
+	"admin.search.noResults": "जुळणारी सेटिंग नाही",
+	"update.checkButton": "अपडेट तपासा"
 }

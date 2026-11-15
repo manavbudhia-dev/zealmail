@@ -2463,5 +2463,16 @@
 	"summary.hide": "ਸਾਰ ਲੁਕਾਓ",
 	"summary.disclaimer": "AI ਵੱਲੋਂ ਲਿਖਿਆ। ਜ਼ਰੂਰੀ ਵੇਰਵੇ ਸੁਨੇਹਿਆਂ ਵਿੱਚ ਜਾਂਚੋ।",
 	"summary.failed": "ਇਸ ਗੱਲਬਾਤ ਦਾ ਸਾਰ ਨਹੀਂ ਬਣ ਸਕਿਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
-	"summary.rateLimited": "ਇਸ ਵੇਲੇ ਬਹੁਤ ਸਾਰੀਆਂ ਸਾਰ ਬੇਨਤੀਆਂ ਹਨ। ਇੱਕ ਮਿੰਟ ਬਾਅਦ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+	"summary.rateLimited": "ਇਸ ਵੇਲੇ ਬਹੁਤ ਸਾਰੀਆਂ ਸਾਰ ਬੇਨਤੀਆਂ ਹਨ। ਇੱਕ ਮਿੰਟ ਬਾਅਦ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+	"navigation.help": "ਮਦਦ",
+	"navigation.sidePanel": "ਸਾਈਡ ਪੈਨਲ",
+	"list.refresh": "ਰਿਫ੍ਰੈਸ਼ ਕਰੋ",
+	"list.selectMenu": "ਚੁਣੋ",
+	"list.select.all": "ਸਾਰੇ",
+	"list.select.read": "ਪੜ੍ਹੇ ਹੋਏ",
+	"list.moreActions": "ਹੋਰ",
+	"list.markAllRead": "ਸਾਰਿਆਂ ਨੂੰ ਪੜ੍ਹਿਆ ਵਜੋਂ ਚਿੰਨ੍ਹਿਤ ਕਰੋ",
+	"admin.search.placeholder": "ਵਰਤੋਂਕਾਰ, ਸੈਟਿੰਗਾਂ ਜਾਂ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ ਖੋਜੋ",
+	"admin.search.noResults": "ਕੋਈ ਮੇਲ ਖਾਂਦੀ ਸੈਟਿੰਗ ਨਹੀਂ",
+	"update.checkButton": "ਅੱਪਡੇਟ ਜਾਂਚੋ"
 }

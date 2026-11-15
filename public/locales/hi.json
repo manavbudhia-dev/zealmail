@@ -2463,5 +2463,16 @@
 	"summary.hide": "सारांश छिपाएँ",
 	"summary.disclaimer": "AI द्वारा लिखा गया। ज़रूरी जानकारी संदेशों में जाँचें।",
 	"summary.failed": "इस बातचीत का सारांश नहीं बन सका। फिर से कोशिश करें।",
-	"summary.rateLimited": "अभी बहुत सारे सारांश अनुरोध हैं। एक मिनट बाद फिर कोशिश करें।"
+	"summary.rateLimited": "अभी बहुत सारे सारांश अनुरोध हैं। एक मिनट बाद फिर कोशिश करें।",
+	"navigation.help": "सहायता",
+	"navigation.sidePanel": "साइड पैनल",
+	"list.refresh": "रीफ़्रेश करें",
+	"list.selectMenu": "चुनें",
+	"list.select.all": "सभी",
+	"list.select.read": "पढ़े गए",
+	"list.moreActions": "और",
+	"list.markAllRead": "सभी को पढ़ा हुआ चिह्नित करें",
+	"admin.search.placeholder": "उपयोगकर्ता, सेटिंग या सुविधाएँ खोजें",
+	"admin.search.noResults": "कोई मिलती-जुलती सेटिंग नहीं",
+	"update.checkButton": "अपडेट जाँचें"
 }

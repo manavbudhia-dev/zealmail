@@ -2445,5 +2445,16 @@
 	"summary.hide": "隐藏摘要",
 	"summary.disclaimer": "由 AI 撰写。请在邮件中核对重要细节。",
 	"summary.failed": "无法总结此对话。请重试。",
-	"summary.rateLimited": "当前总结请求过多。请一分钟后重试。"
+	"summary.rateLimited": "当前总结请求过多。请一分钟后重试。",
+	"navigation.help": "帮助",
+	"navigation.sidePanel": "侧边栏",
+	"list.refresh": "刷新",
+	"list.selectMenu": "选择",
+	"list.select.all": "全部",
+	"list.select.read": "已读",
+	"list.moreActions": "更多",
+	"list.markAllRead": "全部标为已读",
+	"admin.search.placeholder": "搜索用户、设置或功能",
+	"admin.search.noResults": "没有匹配的设置",
+	"update.checkButton": "检查更新"
 }

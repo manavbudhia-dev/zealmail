@@ -9,11 +9,10 @@ import { usePathname } from "next/navigation";
 import {
   Archive,
   CalendarClock,
+  ChevronDown,
   Clock,
   FileText,
-  Folder,
   Inbox,
-  MailPlus,
   Plus,
   Send,
   ShieldAlert,
@@ -40,7 +39,6 @@ import {
   FOLDER_COLOR_OPTIONS,
 } from "@/lib/folders/colors";
 import type { FolderColor } from "@/lib/folders/types";
-import { cn } from "@/lib/utils";
 import { NavItem } from "./components-nav";
 import type { NavLink } from "./components-nav-types";
 import type { CustomFolder } from "./dashboard-nav-types";
@@ -55,10 +53,11 @@ import { readStorage, writeStorage } from "./reorderable-list-utils";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarHeader } from "./sidebar-header";
 import { SidebarScaffold } from "./sidebar-scaffold";
+import { MaterialEdit, MaterialLabel } from "./material-icons";
 import { useSidebar } from "./sidebar-state";
 
 const links = [
-  { href: "/compose", labelKey: "navigation.compose", icon: MailPlus, primary: true },
+  { href: "/compose", labelKey: "navigation.compose", icon: MaterialEdit, primary: true },
   { href: "/inbox", labelKey: "navigation.inbox", icon: Inbox, preloadMessages: true },
   { href: "/starred", labelKey: "navigation.starred", icon: Star, preloadMessages: true },
   { href: "/snoozed", labelKey: "navigation.snoozed", icon: Clock, preloadMessages: true },
@@ -76,7 +75,7 @@ const links = [
 ] satisfies (Omit<NavLink, "label"> & { labelKey: TranslationKey })[];
 
 
-// Drafts, Archived, Spam and Trash start tucked under "More...".
+// Drafts, Archived, Spam and Trash can be tucked under "Less"; they start shown, as in Gmail.
 const MORE_LINK_HREFS = ["/drafts", "/archived", "/spam", "/trash"];
 const MAX_VISIBLE_FOLDERS = 3;
 const MORE_OPEN_KEY = "mailflare:nav:more-open";
@@ -93,8 +92,9 @@ function NavToggle({ expanded, onClick, collapsedLabel, expandedLabel }: { expan
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
-      className="flex h-9 w-full items-center rounded-r-full pl-[52px] text-left text-sm text-neutral-700 transition-colors hover:bg-stone-200/60 max-md:min-h-11 max-md:pl-14 max-md:text-base"
+      className="flex h-8 w-full items-center gap-4 rounded-r-full pl-[26px] text-left text-sm text-[#202124] transition-colors hover:bg-[#e3e5e8] max-md:min-h-11 max-md:text-base"
     >
+      <ChevronDown size={20} strokeWidth={1.75} className={expanded ? "rotate-180 transition-transform" : "transition-transform"} />
       {expanded ? (expandedLabel ?? t("navigation.less")) : (collapsedLabel ?? t("navigation.more"))}
     </button>
   );
@@ -108,7 +108,7 @@ export function DashboardNav({ className }: { className?: string }) {
   const hydrated = useSyncExternalStore(subscribeNothing, hydratedOnClient, hydratedOnServer);
   const [moreOpenChoice, setMoreOpen] = useState<boolean | null>(null);
   const [foldersOpenChoice, setFoldersOpen] = useState<boolean | null>(null);
-  const moreOpen = moreOpenChoice ?? (hydrated && readStorage(MORE_OPEN_KEY, false));
+  const moreOpen = moreOpenChoice ?? (!hydrated || readStorage(MORE_OPEN_KEY, true));
   const foldersOpen = foldersOpenChoice ?? (hydrated && readStorage(FOLDERS_OPEN_KEY, false));
   const [foldersSectionOpen, toggleFoldersSection] = useSectionOpen("mailflare:nav:folders-section-open");
   const { selectedMailbox, isLoading } = useSelectedMailbox();
@@ -242,7 +242,7 @@ export function DashboardNav({ className }: { className?: string }) {
   }
 
   return (
-    <SidebarScaffold className={className} header={<SidebarHeader href="/inbox" />} footer={<SidebarFooter />}>
+    <SidebarScaffold className={className} header={mobile ? <SidebarHeader href="/inbox" /> : undefined} footer={<SidebarFooter />}>
       {composeLink && !mobile && <NavItem labelClassName="font-medium" link={composeLink} />}
       {minimal && <hr className="mx-6 my-2 border-neutral-200/70" />}
       <ReorderableList
@@ -252,24 +252,26 @@ export function DashboardNav({ className }: { className?: string }) {
           { id: "main", items: mainLinks.map((link) => ({ id: link.href!, node: <NavItem link={link} /> })) },
           {
             id: "more",
-            before: minimal ? undefined : <NavToggle expanded={moreOpen} onClick={toggleMore} />,
+            // Collapsed, "More" sits where the hidden items start; expanded, "Less" follows them, as in Gmail.
+            before: minimal || moreOpen ? undefined : <NavToggle expanded={false} onClick={toggleMore} />,
             visibleIds: (ordered) => showAllMoreLinks ? ordered : ordered.filter((id) => isActiveHref(id)),
             items: moreLinks.map((link) => ({ id: link.href!, node: <NavItem link={link} /> })),
           },
         ]}
       />
+      {!minimal && moreOpen && <NavToggle expanded onClick={toggleMore} />}
       {minimal && <hr className="mx-6 my-2 border-neutral-200/70" />}
       {!minimal && (
-        <NavSectionHeader label={t("navigation.folders")} open={foldersSectionOpen} onToggle={toggleFoldersSection}>
+        <NavSectionHeader variant="title" label={t("navigation.folders")} open={foldersSectionOpen} onToggle={toggleFoldersSection}>
           {selectedMailbox && (
             <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
               <DialogTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-neutral-500 hover:bg-blue-50 hover:text-blue-700"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-[#444746] hover:bg-[#e3e5e8]"
                   aria-label={t("navigation.createFolder")}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" strokeWidth={1.75} />
                 </button>
               </DialogTrigger>
               <DialogContent>
@@ -330,7 +332,7 @@ export function DashboardNav({ className }: { className?: string }) {
       )}
       
       {!minimal && foldersSectionOpen && folders.length === 0 && (
-        <div className="px-4 py-1.5 text-xs text-neutral-500">
+        <div className="pl-[26px] py-1.5 text-xs text-[#5f6368]">
           {t("navigation.noFolders")}
         </div>
       )}
@@ -353,7 +355,7 @@ export function DashboardNav({ className }: { className?: string }) {
                 link={{
                   href: `/folders/${folder.id}`,
                   label: folder.name,
-                  icon: Folder,
+                  icon: MaterialLabel,
                   preloadMessages: true,
                   iconColor: folder.color,
                   count: counts.customFolders[folder.id]?.unread,

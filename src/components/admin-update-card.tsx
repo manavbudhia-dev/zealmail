@@ -24,6 +24,15 @@ export function AdminUpdateCard() {
 	const [isCheckingMigrations, setIsCheckingMigrations] = useState(true);
 	const [isPending, setIsPending] = useState(false);
 	const [isMigrating, setIsMigrating] = useState(false);
+	const [checkKey, setCheckKey] = useState(0);
+
+	function checkAgain() {
+		setError("");
+		setMigrationError("");
+		setIsChecking(true);
+		setIsCheckingMigrations(true);
+		setCheckKey((key) => key + 1);
+	}
 
 	useEffect(() => {
 		let isActive = true;
@@ -57,7 +66,7 @@ export function AdminUpdateCard() {
 		return () => {
 			isActive = false;
 		};
-	}, []);
+	}, [checkKey]);
 
 	async function handleUpdate() {
 		setError("");
@@ -88,28 +97,37 @@ export function AdminUpdateCard() {
 	}
 
 	return (
-		<Card className="rounded-3xl border-0 bg-white p-6">
-			<CardHeader className="flex-row items-center gap-4 space-y-0 py-0">
-				<div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-					<RefreshCw className="h-5 w-5" />
+		<Card className="rounded-2xl border border-[#e3e3e3] bg-white p-6 shadow-none">
+			<CardHeader className="flex-row flex-wrap items-start gap-4 space-y-0 py-0">
+				<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e8f0fe] text-[#1a73e8]">
+					<RefreshCw className="h-6 w-6" strokeWidth={1.75} />
 				</div>
-				<div>
-					<CardTitle className="text-base">{t("update.title")}</CardTitle>
-					<p className="mt-1 text-sm text-neutral-500">
+				<div className="min-w-0 flex-1 basis-64">
+					<CardTitle className="text-lg font-medium text-[#1f1f1f]">{t("update.title")}</CardTitle>
+					<p className="mt-1 text-sm text-[#444746]">
 						{t("update.description")}
 					</p>
 				</div>
+				<button
+					type="button"
+					onClick={checkAgain}
+					disabled={isChecking || isCheckingMigrations}
+					className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#0b57d0] px-6 text-sm font-medium text-white transition-shadow hover:shadow-[0_1px_2px_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] disabled:opacity-60"
+				>
+					<RefreshCw className={`h-4 w-4 ${isChecking || isCheckingMigrations ? "animate-spin" : ""}`} />
+					{t("update.checkButton")}
+				</button>
 			</CardHeader>
 			<CardContent className="space-y-5 pt-5">
 				{isChecking && <Skeleton className="h-20 w-full rounded-2xl" />}
 
 				{!isChecking && status?.configured === false && (
 					<div className="space-y-3">
-						<p className="text-sm text-neutral-600">
+						<p className="text-sm font-medium text-[#1f1f1f]">
 							{status.configuration?.length ? t("update.completeConfig") : t("update.selfHosted")}
 						</p>
 						{!!status.configuration?.length && (
-							<ul className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-100">
+							<ul className="divide-y divide-[#e3e3e3] overflow-hidden rounded-xl border border-[#e3e3e3]">
 								{status.configuration.map((item) => (
 									<li key={item.name} className="flex items-center gap-3 px-4 py-3 text-sm">
 										{item.configured ? (
@@ -118,7 +136,7 @@ export function AdminUpdateCard() {
 											<CircleX className="h-4 w-4 shrink-0 text-red-600" />
 										)}
 										<code className="text-xs font-medium text-neutral-800">{item.name}</code>
-										<span className={`ml-auto text-xs font-medium ${item.configured ? "text-green-700" : "text-red-600"}`}>
+										<span className={`ml-auto rounded-md px-2 py-0.5 text-xs font-medium ${item.configured ? "bg-[#e6f4ea] text-[#137333]" : "bg-[#fce8e6] text-[#c5221f]"}`}>
 											{item.configured ? t("update.configured") : t("update.missing")}
 										</span>
 									</li>
@@ -129,7 +147,7 @@ export function AdminUpdateCard() {
 				)}
 
 				{!isChecking && status?.configured && (
-					<div className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-100">
+					<div className="divide-y divide-[#e3e3e3] overflow-hidden rounded-xl border border-[#e3e3e3]">
 						<div className="flex items-center gap-3 px-4 py-4">
 							{status.available ? (
 								<RefreshCw className={`h-4 w-4 shrink-0 text-blue-600 ${isPending ? "animate-spin" : ""}`} />
@@ -156,7 +174,7 @@ export function AdminUpdateCard() {
 				)}
 
 				{(isCheckingMigrations || migrationStatus) && (
-					<div className="divide-y divide-neutral-100 overflow-hidden rounded-2xl border border-neutral-100">
+					<div className="divide-y divide-[#e3e3e3] overflow-hidden rounded-xl border border-[#e3e3e3]">
 						{isCheckingMigrations && (
 							<div className="flex items-center gap-3 px-4 py-4">
 								<Skeleton className="h-4 w-4 rounded-full" />

@@ -2463,5 +2463,16 @@
 	"summary.hide": "சுருக்கத்தை மறை",
 	"summary.disclaimer": "AI எழுதியது. முக்கிய விவரங்களை மின்னஞ்சல்களில் சரிபார்க்கவும்.",
 	"summary.failed": "இந்த உரையாடலைச் சுருக்க முடியவில்லை. மீண்டும் முயலவும்.",
-	"summary.rateLimited": "இப்போது அதிகமான சுருக்கக் கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலவும்."
+	"summary.rateLimited": "இப்போது அதிகமான சுருக்கக் கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலவும்.",
+	"navigation.help": "உதவி",
+	"navigation.sidePanel": "பக்கப் பலகம்",
+	"list.refresh": "புதுப்பி",
+	"list.selectMenu": "தேர்ந்தெடு",
+	"list.select.all": "அனைத்தும்",
+	"list.select.read": "படித்தவை",
+	"list.moreActions": "மேலும்",
+	"list.markAllRead": "அனைத்தையும் படித்ததாகக் குறி",
+	"admin.search.placeholder": "பயனர்கள், அமைப்புகள் அல்லது அம்சங்களைத் தேடு",
+	"admin.search.noResults": "பொருந்தும் அமைப்புகள் இல்லை",
+	"update.checkButton": "புதுப்பிப்புகளைச் சரிபார்"
 }

@@ -2478,5 +2478,16 @@
 	"summary.hide": "Masquer le résumé",
 	"summary.disclaimer": "Rédigé par l'IA. Vérifiez les détails importants dans les messages.",
 	"summary.failed": "Impossible de résumer cette conversation. Réessayez.",
-	"summary.rateLimited": "Trop de résumés en ce moment. Réessayez dans une minute."
+	"summary.rateLimited": "Trop de résumés en ce moment. Réessayez dans une minute.",
+	"navigation.help": "Aide",
+	"navigation.sidePanel": "Panneau latéral",
+	"list.refresh": "Actualiser",
+	"list.selectMenu": "Sélectionner",
+	"list.select.all": "Tous",
+	"list.select.read": "Lus",
+	"list.moreActions": "Plus",
+	"list.markAllRead": "Tout marquer comme lu",
+	"admin.search.placeholder": "Rechercher des utilisateurs, paramètres ou fonctionnalités",
+	"admin.search.noResults": "Aucun paramètre correspondant",
+	"update.checkButton": "Rechercher des mises à jour"
 }

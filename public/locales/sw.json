@@ -2463,5 +2463,16 @@
 	"summary.hide": "Ficha muhtasari",
 	"summary.disclaimer": "Imeandikwa na AI. Hakiki maelezo muhimu kwenye ujumbe.",
 	"summary.failed": "Imeshindwa kufupisha mazungumzo haya. Jaribu tena.",
-	"summary.rateLimited": "Maombi mengi ya muhtasari kwa sasa. Jaribu tena baada ya dakika moja."
+	"summary.rateLimited": "Maombi mengi ya muhtasari kwa sasa. Jaribu tena baada ya dakika moja.",
+	"navigation.help": "Msaada",
+	"navigation.sidePanel": "Paneli ya pembeni",
+	"list.refresh": "Onyesha upya",
+	"list.selectMenu": "Chagua",
+	"list.select.all": "Zote",
+	"list.select.read": "Zilizosomwa",
+	"list.moreActions": "Zaidi",
+	"list.markAllRead": "Weka zote kuwa zimesomwa",
+	"admin.search.placeholder": "Tafuta watumiaji, mipangilio au vipengele",
+	"admin.search.noResults": "Hakuna mipangilio inayolingana",
+	"update.checkButton": "Angalia masasisho"
 }

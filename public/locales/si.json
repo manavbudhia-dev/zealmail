@@ -2463,5 +2463,16 @@
 	"summary.hide": "සාරාංශය සඟවන්න",
 	"summary.disclaimer": "AI විසින් ලියන ලදී. වැදගත් විස්තර පණිවිඩවල පරීක්ෂා කරන්න.",
 	"summary.failed": "මෙම සංවාදය සාරාංශ කළ නොහැකි විය. නැවත උත්සාහ කරන්න.",
-	"summary.rateLimited": "දැන් සාරාංශ ඉල්ලීම් වැඩියි. මිනිත්තුවකින් නැවත උත්සාහ කරන්න."
+	"summary.rateLimited": "දැන් සාරාංශ ඉල්ලීම් වැඩියි. මිනිත්තුවකින් නැවත උත්සාහ කරන්න.",
+	"navigation.help": "උදව්",
+	"navigation.sidePanel": "පැති පුවරුව",
+	"list.refresh": "නැවුම් කරන්න",
+	"list.selectMenu": "තෝරන්න",
+	"list.select.all": "සියල්ල",
+	"list.select.read": "කියවූ",
+	"list.moreActions": "තවත්",
+	"list.markAllRead": "සියල්ල කියවූ ලෙස සලකුණු කරන්න",
+	"admin.search.placeholder": "පරිශීලකයින්, සැකසුම් හෝ විශේෂාංග සොයන්න",
+	"admin.search.noResults": "ගැළපෙන සැකසුම් නැත",
+	"update.checkButton": "යාවත්කාලීන පරීක්ෂා කරන්න"
 }

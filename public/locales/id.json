@@ -2445,5 +2445,16 @@
 	"summary.hide": "Sembunyikan ringkasan",
 	"summary.disclaimer": "Ditulis oleh AI. Periksa detail penting di pesan.",
 	"summary.failed": "Tidak dapat meringkas percakapan ini. Coba lagi.",
-	"summary.rateLimited": "Terlalu banyak ringkasan saat ini. Coba lagi dalam satu menit."
+	"summary.rateLimited": "Terlalu banyak ringkasan saat ini. Coba lagi dalam satu menit.",
+	"navigation.help": "Bantuan",
+	"navigation.sidePanel": "Panel samping",
+	"list.refresh": "Muat ulang",
+	"list.selectMenu": "Pilih",
+	"list.select.all": "Semua",
+	"list.select.read": "Sudah dibaca",
+	"list.moreActions": "Lainnya",
+	"list.markAllRead": "Tandai semua sudah dibaca",
+	"admin.search.placeholder": "Cari pengguna, setelan, atau fitur",
+	"admin.search.noResults": "Tidak ada setelan yang cocok",
+	"update.checkButton": "Periksa pembaruan"
 }

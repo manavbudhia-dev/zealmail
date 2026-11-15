@@ -2445,5 +2445,16 @@
 	"summary.hide": "Ẩn tóm tắt",
 	"summary.disclaimer": "Do AI viết. Hãy kiểm tra các chi tiết quan trọng trong thư.",
 	"summary.failed": "Không thể tóm tắt cuộc trò chuyện này. Hãy thử lại.",
-	"summary.rateLimited": "Hiện có quá nhiều yêu cầu tóm tắt. Hãy thử lại sau một phút."
+	"summary.rateLimited": "Hiện có quá nhiều yêu cầu tóm tắt. Hãy thử lại sau một phút.",
+	"navigation.help": "Trợ giúp",
+	"navigation.sidePanel": "Bảng bên",
+	"list.refresh": "Làm mới",
+	"list.selectMenu": "Chọn",
+	"list.select.all": "Tất cả",
+	"list.select.read": "Đã đọc",
+	"list.moreActions": "Thêm",
+	"list.markAllRead": "Đánh dấu tất cả là đã đọc",
+	"admin.search.placeholder": "Tìm người dùng, cài đặt hoặc tính năng",
+	"admin.search.noResults": "Không có cài đặt phù hợp",
+	"update.checkButton": "Kiểm tra bản cập nhật"
 }

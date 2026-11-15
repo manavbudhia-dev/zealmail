@@ -2493,5 +2493,16 @@
 	"summary.hide": "Скрыть краткое содержание",
 	"summary.disclaimer": "Написано ИИ. Проверяйте важные детали в самих письмах.",
 	"summary.failed": "Не удалось кратко пересказать переписку. Попробуйте ещё раз.",
-	"summary.rateLimited": "Сейчас слишком много запросов. Попробуйте через минуту."
+	"summary.rateLimited": "Сейчас слишком много запросов. Попробуйте через минуту.",
+	"navigation.help": "Справка",
+	"navigation.sidePanel": "Боковая панель",
+	"list.refresh": "Обновить",
+	"list.selectMenu": "Выбрать",
+	"list.select.all": "Все",
+	"list.select.read": "Прочитанные",
+	"list.moreActions": "Ещё",
+	"list.markAllRead": "Отметить все как прочитанные",
+	"admin.search.placeholder": "Поиск пользователей, настроек или функций",
+	"admin.search.noResults": "Нет подходящих настроек",
+	"update.checkButton": "Проверить обновления"
 }
