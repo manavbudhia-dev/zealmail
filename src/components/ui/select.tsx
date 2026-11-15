@@ -77,6 +77,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const toInternal = (raw: string) => (raw === "" && hasEmptyOption ? EMPTY_VALUE : raw);
     const [uncontrolled, setUncontrolled] = React.useState(String(defaultValue ?? ""));
     const current = value === undefined ? uncontrolled : String(value);
+    const selected = options.find((option) => option.value === current);
 
     function handleValueChange(next: string) {
       const raw = next === EMPTY_VALUE ? "" : next;
@@ -104,7 +105,9 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             )}
           >
             <span className="min-w-0 flex-1 truncate">
-              <SelectPrimitive.Value placeholder={placeholder} />
+              {/* Radix fills the value from the mounted items, which do not exist in server HTML or the
+                  first client render; giving it the selected label keeps the field from flashing empty. */}
+              <SelectPrimitive.Value placeholder={placeholder}>{selected?.label}</SelectPrimitive.Value>
             </span>
             <SelectPrimitive.Icon asChild>
               <ChevronDown aria-hidden="true" size={16} className="shrink-0 text-neutral-500" />

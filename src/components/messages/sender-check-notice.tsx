@@ -44,7 +44,10 @@ export function SenderCheckNotice({
 	const { authentication } = useMessageAuthentication(message.id, message.direction);
 	const warning = getSenderWarning(message, authentication);
 
-	if (!warning) return null;
+	// An announcing notice keeps its (empty, unstyled) live region mounted: a region that
+	// appears together with its text is not reliably read out, and authentication
+	// verdicts arrive after the message renders. Without announcing there is nothing to keep.
+	if (!warning && !announce) return null;
 
 	return (
 		<div role={announce ? "status" : undefined} className={warning ? className : undefined}>

@@ -140,9 +140,11 @@ test("provider server rendering uses initial locale and labels the native langua
 	const pt = await i18n.renderLanguage("pt-BR");
 	assert.match(pt, /<span>Entrada<\/span>/);
 	assert.match(pt, /<label for="[^"]+"[^>]*>Idioma<\/label>/);
-	assert.match(pt, /<select id="[^"]+"/);
-	assert.match(pt, /value="pt-BR" lang="pt-BR" selected=""/);
-	assert.match(await i18n.renderLanguage("en"), /value="en" lang="en" selected=""/);
+	// The label points at the combobox trigger, which shows the selected language from the first render.
+	const labelled = pt.match(/<label for="([^"]+)"/)[1];
+	assert.match(pt, new RegExp(`role="combobox"[^>]*id="${labelled}"`));
+	assert.match(pt, /role="combobox"[^>]*>[\s\S]*Português \(Brasil\)[\s\S]*<\/button>/);
+	assert.match(await i18n.renderLanguage("en"), /role="combobox"[^>]*>[\s\S]*English[\s\S]*<\/button>/);
 });
 
 test("root layout passes the same cookie locale to HTML and provider on first render", async () => {
@@ -169,7 +171,7 @@ test("a locale registered once reaches resolution, translation, cookie, selector
 	assert.equal(extended.translate(await extended.loadMessages("he"), "navigation.inbox"), "Entrada");
 	assert.match(extended.serializeLocaleCookie("he", true), /^mailflare-locale=he;/);
 	const selector = await extended.renderLanguage("he");
-	assert.match(selector, /value="he" lang="he" selected="">Testlandic<\/option>/);
+	assert.match(selector, /role="combobox"[^>]*>[\s\S]*Testlandic[\s\S]*<\/button>/);
 	assert.match(selector, />Entrada<\/span>/);
 	const layout = await extended.renderLayout("he");
 	assert.match(layout, /<html lang="he"/);
