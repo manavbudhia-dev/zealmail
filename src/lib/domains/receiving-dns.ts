@@ -74,3 +74,14 @@ export async function removeMx(env: CloudflareEnv, domain: DomainRow, matches: (
 }
 
 export const isInboundSmtpMx = (content: string) => /inbound-smtp\.[a-z0-9-]+\.amazonaws\.com\.?$/i.test(content.trim());
+
+/** Resend's receiving MX target: the older SES inbound hosts, or its own `receive.*.rmta.net` hosts. */
+export const isResendInboundMx = (content: string) =>
+	isInboundSmtpMx(content) || /(^|\.)receive\.([a-z0-9-]+\.)*rmta\.net\.?$/i.test(content.trim());
+
+/**
+ * A Resend MX record is the receiving one when it points at an inbound host or sits on the
+ * domain apex; Resend's sending (bounce) MX always lives on a subdomain such as `send`.
+ */
+export const isResendReceivingMxRecord = (record: { type: string; name?: string | null; value: string }) =>
+	record.type === "MX" && (isResendInboundMx(record.value) || !record.name?.trim() || record.name.trim() === "@");

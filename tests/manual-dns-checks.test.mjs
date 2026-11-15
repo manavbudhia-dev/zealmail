@@ -28,7 +28,7 @@ const mocks = {
 await build({
 	stdin: {
 		contents: `
-			export { hasMx, hasMxMatching, isInboundSmtpMx } from "./src/lib/domains/receiving-dns.ts";
+			export { hasMx, hasMxMatching, isInboundSmtpMx, isResendInboundMx, isResendReceivingMxRecord } from "./src/lib/domains/receiving-dns.ts";
 			export { auditDomainDns } from "./src/lib/domains/dns-audit.ts";
 			export { getResendReceivingView } from "./src/lib/domains/resend-receiving.ts";
 		`,
@@ -53,7 +53,7 @@ await build({
 	}],
 	logLevel: "silent",
 });
-const { hasMx, hasMxMatching, isInboundSmtpMx, auditDomainDns, getResendReceivingView } = await import(pathToFileURL(join(bundleDirectory, "entry.mjs")).href);
+const { hasMx, hasMxMatching, isInboundSmtpMx, isResendInboundMx, isResendReceivingMxRecord, auditDomainDns, getResendReceivingView } = await import(pathToFileURL(join(bundleDirectory, "entry.mjs")).href);
 rmSync(bundleDirectory, { recursive: true, force: true });
 
 const manualDomain = { hostname: "example.com", zoneId: "manual" };
@@ -113,6 +113,16 @@ test("hasMxMatching accepts any MX matching a provider's target shape", async ()
 	assert.equal(await hasMxMatching({}, manualDomain, (target) => target.endsWith(".mx.cloudflare.net")), false);
 	answerDns({});
 	assert.equal(await hasMxMatching({}, manualDomain, isInboundSmtpMx), false);
+});
+
+test("Resend's rmta.net receiving MX is told apart from its sending MX", () => {
+	assert.equal(isResendInboundMx("receive.forge.rmta.net"), true);
+	assert.equal(isResendInboundMx("inbound-smtp.us-east-1.amazonaws.com"), true);
+	assert.equal(isResendInboundMx("feedback-smtp.us-east-1.amazonses.com"), false);
+	assert.equal(isResendReceivingMxRecord({ type: "MX", name: "", value: "receive.forge.rmta.net" }), true);
+	assert.equal(isResendReceivingMxRecord({ type: "MX", name: "@", value: "mx.example.net" }), true);
+	assert.equal(isResendReceivingMxRecord({ type: "MX", name: "send", value: "feedback-smtp.us-east-1.amazonses.com" }), false);
+	assert.equal(isResendReceivingMxRecord({ type: "TXT", name: "", value: "receive.forge.rmta.net" }), false);
 });
 
 test("SPF for a Resend sender is found on Resend's return-path subdomains", async () => {

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { appSettings } from "@/db/schema";
 import { isManualZone } from "@/lib/domains/provision";
-import { hasMx, hasMxMatching, isInboundSmtpMx, publishMx, removeMx } from "@/lib/domains/receiving-dns";
+import { hasMx, hasMxMatching, isResendInboundMx, isResendReceivingMxRecord, publishMx, removeMx } from "@/lib/domains/receiving-dns";
 import { getResendApiKey, getResendKeyStatus } from "@/lib/email/outbound-provider";
 import {
 	createResendDomain, createResendWebhook, deleteResendDomain, deleteResendWebhook, findResendDomain, getResendDomain,
@@ -26,7 +26,7 @@ async function storeWebhook(env: CloudflareEnv, id: string | null, secret: strin
 }
 
 function inboundMx(records: ResendDomainRecord[] | undefined) {
-	return (records ?? []).find((record) => record.type === "MX" && isInboundSmtpMx(record.value)) ?? null;
+	return (records ?? []).find((record) => isResendReceivingMxRecord(record)) ?? null;
 }
 
 function isPublicHttps(origin: string): boolean {
@@ -92,7 +92,7 @@ export async function getResendReceivingView(env: CloudflareEnv, domain: DomainR
 			? true
 			: mx
 				? await hasMx(env, domain, mx.value)
-				: await hasMxMatching(env, domain, isInboundSmtpMx);
+				: await hasMxMatching(env, domain, isResendInboundMx);
 		steps.push({ key: "mx", label: "MX record points to Resend", ok: mxOk === true, detail: mxOk === null ? "Could not check DNS from here" : mx?.value ?? undefined });
 		steps.push({ key: "verified", label: "Domain verified", ok: resend?.status === "verified", detail: resend ? resend.status.replace(/_/g, " ") : undefined });
 		const hooks = await listResendWebhooks(key.apiKey);
@@ -116,7 +116,7 @@ export async function hasResendReceivingConfig(env: CloudflareEnv, domain: Domai
 export async function removeResendReceiving(env: CloudflareEnv, domain: DomainRow): Promise<void> {
 	const apiKey = await getResendApiKey(env);
 	const resend = await findResendDomain(apiKey, domain.hostname);
-	await removeMx(env, domain, isInboundSmtpMx);
+	await removeMx(env, domain, isResendInboundMx);
 	if (!resend) return;
 	if (domain.sendingProvider === "resend") await updateResendCapabilities(apiKey, resend.id, { receiving: false });
 	else await deleteResendDomain(apiKey, resend.id);
