@@ -2463,5 +2463,16 @@
 	"summary.hide": "Zusammenfassung ausblenden",
 	"summary.disclaimer": "Von KI erstellt. Prüfe wichtige Details in den Nachrichten.",
 	"summary.failed": "Die Unterhaltung konnte nicht zusammengefasst werden. Versuche es erneut.",
-	"summary.rateLimited": "Gerade zu viele Zusammenfassungen. Versuche es in einer Minute erneut."
+	"summary.rateLimited": "Gerade zu viele Zusammenfassungen. Versuche es in einer Minute erneut.",
+	"navigation.help": "Hilfe",
+	"navigation.sidePanel": "Seitenleiste",
+	"list.refresh": "Aktualisieren",
+	"list.selectMenu": "Auswählen",
+	"list.select.all": "Alle",
+	"list.select.read": "Gelesen",
+	"list.moreActions": "Mehr",
+	"list.markAllRead": "Alle als gelesen markieren",
+	"admin.search.placeholder": "Nach Nutzern, Einstellungen oder Funktionen suchen",
+	"admin.search.noResults": "Keine passenden Einstellungen",
+	"update.checkButton": "Nach Updates suchen"
 }

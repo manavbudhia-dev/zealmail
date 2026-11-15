@@ -2463,5 +2463,16 @@
 	"summary.hide": "সারাংশ লুকান",
 	"summary.disclaimer": "AI দ্বারা লেখা। গুরুত্বপূর্ণ বিবরণ বার্তাগুলোতে যাচাই করুন।",
 	"summary.failed": "এই কথোপকথনের সারাংশ তৈরি করা যায়নি। আবার চেষ্টা করুন।",
-	"summary.rateLimited": "এখন অনেক বেশি সারাংশের অনুরোধ। এক মিনিট পরে আবার চেষ্টা করুন।"
+	"summary.rateLimited": "এখন অনেক বেশি সারাংশের অনুরোধ। এক মিনিট পরে আবার চেষ্টা করুন।",
+	"navigation.help": "সহায়তা",
+	"navigation.sidePanel": "পার্শ্ব প্যানেল",
+	"list.refresh": "রিফ্রেশ",
+	"list.selectMenu": "নির্বাচন",
+	"list.select.all": "সব",
+	"list.select.read": "পঠিত",
+	"list.moreActions": "আরও",
+	"list.markAllRead": "সব পঠিত হিসেবে চিহ্নিত করুন",
+	"admin.search.placeholder": "ব্যবহারকারী, সেটিংস বা ফিচার খুঁজুন",
+	"admin.search.noResults": "কোনো মিল থাকা সেটিং নেই",
+	"update.checkButton": "আপডেট দেখুন"
 }

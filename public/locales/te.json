@@ -2463,5 +2463,16 @@
 	"summary.hide": "సారాంశాన్ని దాచండి",
 	"summary.disclaimer": "AI రాసింది. ముఖ్యమైన వివరాలను సందేశాల్లో తనిఖీ చేయండి.",
 	"summary.failed": "ఈ సంభాషణను సంగ్రహించలేకపోయాం. మళ్లీ ప్రయత్నించండి.",
-	"summary.rateLimited": "ప్రస్తుతం చాలా సారాంశ అభ్యర్థనలు ఉన్నాయి. ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి."
+	"summary.rateLimited": "ప్రస్తుతం చాలా సారాంశ అభ్యర్థనలు ఉన్నాయి. ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి.",
+	"navigation.help": "సహాయం",
+	"navigation.sidePanel": "సైడ్ ప్యానెల్",
+	"list.refresh": "రిఫ్రెష్ చేయండి",
+	"list.selectMenu": "ఎంచుకోండి",
+	"list.select.all": "అన్నీ",
+	"list.select.read": "చదివినవి",
+	"list.moreActions": "మరిన్ని",
+	"list.markAllRead": "అన్నింటినీ చదివినట్లుగా గుర్తించండి",
+	"admin.search.placeholder": "వినియోగదారులు, సెట్టింగ్‌లు లేదా ఫీచర్‌లను వెతకండి",
+	"admin.search.noResults": "సరిపోలే సెట్టింగ్‌లు లేవు",
+	"update.checkButton": "అప్‌డేట్‌ల కోసం తనిఖీ చేయండి"
 }

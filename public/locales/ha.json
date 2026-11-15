@@ -2463,5 +2463,16 @@
 	"summary.hide": "Ɓoye taƙaitawa",
 	"summary.disclaimer": "AI ce ta rubuta. Duba muhimman bayanai a cikin saƙonnin.",
 	"summary.failed": "Ba a iya taƙaita wannan tattaunawar ba. Sake gwadawa.",
-	"summary.rateLimited": "Taƙaitawa sun yi yawa yanzu. Sake gwadawa bayan minti ɗaya."
+	"summary.rateLimited": "Taƙaitawa sun yi yawa yanzu. Sake gwadawa bayan minti ɗaya.",
+	"navigation.help": "Taimako",
+	"navigation.sidePanel": "Allon gefe",
+	"list.refresh": "Sabunta",
+	"list.selectMenu": "Zaɓi",
+	"list.select.all": "Duka",
+	"list.select.read": "An karanta",
+	"list.moreActions": "Ƙari",
+	"list.markAllRead": "Yi wa duka alamar an karanta",
+	"admin.search.placeholder": "Nemo masu amfani, saituna ko fasaloli",
+	"admin.search.noResults": "Babu saitin da ya dace",
+	"update.checkButton": "Duba sabuntawa"
 }

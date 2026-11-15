@@ -2463,5 +2463,16 @@
 	"summary.hide": "Özeti gizle",
 	"summary.disclaimer": "Yapay zekâ tarafından yazıldı. Önemli ayrıntıları iletilerde kontrol edin.",
 	"summary.failed": "Bu konuşma özetlenemedi. Tekrar deneyin.",
-	"summary.rateLimited": "Şu anda çok fazla özet isteği var. Bir dakika sonra tekrar deneyin."
+	"summary.rateLimited": "Şu anda çok fazla özet isteği var. Bir dakika sonra tekrar deneyin.",
+	"navigation.help": "Yardım",
+	"navigation.sidePanel": "Yan panel",
+	"list.refresh": "Yenile",
+	"list.selectMenu": "Seç",
+	"list.select.all": "Tümü",
+	"list.select.read": "Okunanlar",
+	"list.moreActions": "Diğer",
+	"list.markAllRead": "Tümünü okundu olarak işaretle",
+	"admin.search.placeholder": "Kullanıcı, ayar veya özellik ara",
+	"admin.search.noResults": "Eşleşen ayar yok",
+	"update.checkButton": "Güncellemeleri denetle"
 }

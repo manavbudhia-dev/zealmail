@@ -1,25 +1,24 @@
 "use client";
 
 import { SkipToContent } from "@/components/skip-to-content";
-import Link from "next/link";
-import { HelpCircle, Search } from "@/components/icons";
 import { useLanguage } from "@/components/language-provider";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { ComposeProvider } from "@/components/compose/compose-context";
 import { FloatingComposer } from "@/components/compose/floating-composer";
 import { MailSearchProvider } from "@/components/mail-search/mail-search-context";
 import { MailboxProvider } from "@/components/mailbox-provider";
-import { MailboxSelector } from "@/components/mailbox-selector";
 import { LicenseIndicator } from "@/components/license-indicator";
 import { AdminNav } from "@/components/admin-nav";
 import { SidebarProvider } from "@/components/sidebar-state";
 import clsx from "clsx";
 import { usePathname } from "next/navigation";
 import { adminPageTitles } from "@/components/admin-page-titles";
-import { SidebarAside, MobileTopBar } from "@/components/sidebar-aside";
+import { SidebarAside } from "@/components/sidebar-aside";
 import { SidebarResizeBoundary } from "@/components/sidebar-resize-boundary";
 import { ShortcutsProvider } from "@/components/shortcuts";
 import { RouteTitle } from "@/components/route-title";
+import { AppTopBar } from "@/components/app-top-bar";
+import { AdminSearch } from "@/components/admin-search";
 
 const primaryOnlyPrefixes = [
   "/agent",
@@ -57,23 +56,22 @@ export default function DashboardLayout({
           <MailSearchProvider>
           <ShortcutsProvider>
             <RouteTitle />
-          <div className="grid h-dvh grid-cols-[minmax(0,1fr)] md:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] overflow-hidden bg-[#f6f8fc] transition-[grid-template-columns]" style={{ transitionDuration: "var(--sidebar-transition-duration)" }}>
+          <div className="flex h-dvh flex-col overflow-hidden bg-[#f6f8fc]">
             <SkipToContent />
-            <SidebarAside>
-              <div className="h-full">
-                <AdminNav />
+            <AppTopBar homeHref="/admin" label={t("account.admin")} search={<AdminSearch />} actions={<LicenseIndicator />} />
+            <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[var(--sidebar-width)_minmax(0,1fr)] transition-[grid-template-columns]" style={{ transitionDuration: "var(--sidebar-transition-duration)" }}>
+              <SidebarAside>
+                <div className="h-full">
+                  <AdminNav />
+                </div>
+                <SidebarResizeBoundary />
+              </SidebarAside>
+              <div className="flex min-h-0 min-w-0 flex-col md:pb-4 md:pr-4">
+                {mobileTitle && <p aria-hidden="true" className="truncate px-5 pb-3 text-lg font-medium text-neutral-900 md:hidden">{mobileTitle}</p>}
+                <main id="main-content" tabIndex={-1} className={clsx("focus:outline-none page-flush min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain max-md:rounded-t-3xl max-md:bg-white max-md:pb-24 md:rounded-2xl md:bg-[#f8fafd] md:ring-1 md:ring-[#e3e3e3]/60 px-6 py-8 scrollbar-gutter-stable lg:px-10", mobileTitle && "max-md:[&_h1]:sr-only")}>
+                  <div className={clsx("w-full", pathname === "/admin" ? "max-w-[1240px]" : "max-w-3xl")}>{children}</div>
+                </main>
               </div>
-              <SidebarResizeBoundary />
-            </SidebarAside>
-            <div className="flex min-h-0 min-w-0 flex-col">
-                            <MobileTopBar title={mobileTitle} />
-              <header className="fixed top-2 right-4 flex items-center gap-4 z-90">
-                <LicenseIndicator />
-                <MailboxSelector />
-              </header>
-              <main id="main-content" tabIndex={-1} className={clsx("focus:outline-none page-flush min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-tl-3xl max-md:rounded-t-3xl max-md:bg-white max-md:pb-24 px-6 py-10 scrollbar-gutter-stable lg:px-12", mobileTitle && "max-md:[&_h1]:sr-only")}>
-                <div className="w-full max-w-3xl">{children}</div>
-              </main>
             </div>
             <FloatingComposer />
           </div>

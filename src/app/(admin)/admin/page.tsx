@@ -5,7 +5,9 @@ import { Bot, Globe2, KeyRound, Mail, Palette, Users } from "@/components/icons"
 import { useLanguage } from "@/components/language-provider";
 import type { TranslationKey } from "@/lib/i18n/types";
 import { AdminUpdateCard } from "@/components/admin-update-card";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useBranding } from "@/components/branding-provider";
+import { canSeeAdminLink } from "@/components/admin-nav-utils";
+import { MaterialChevronRight } from "@/components/material-icons";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 type AdminSection = {
@@ -14,11 +16,16 @@ type AdminSection = {
 	descriptionKey: TranslationKey;
 	icon: typeof Bot;
 	permission?: "primary" | "domains" | "users";
+	/** Icon disc background and glyph colour. */
+	tint: string;
+	color: string;
 };
 
 const sections: AdminSection[] = [
 	{
 		href: "/agent",
+		tint: "#e8f0fe",
+		color: "#1a73e8",
 		titleKey: "admin.nav.agent",
 		descriptionKey: "admin.section.agent",
 		icon: Bot,
@@ -26,12 +33,16 @@ const sections: AdminSection[] = [
 	},
 	{
 		href: "/mailboxes",
+		tint: "#f3e8fd",
+		color: "#9334e6",
 		titleKey: "admin.nav.mailboxes",
 		descriptionKey: "admin.section.mailboxes",
 		icon: Mail,
 	},
 	{
 		href: "/domains",
+		tint: "#e8f0fe",
+		color: "#1967d2",
 		titleKey: "admin.nav.domains",
 		descriptionKey: "admin.section.domains",
 		icon: Globe2,
@@ -39,6 +50,8 @@ const sections: AdminSection[] = [
 	},
 	{
 		href: "/branding",
+		tint: "#fce8e6",
+		color: "#d93025",
 		titleKey: "admin.nav.branding",
 		descriptionKey: "admin.section.branding",
 		icon: Palette,
@@ -46,12 +59,16 @@ const sections: AdminSection[] = [
 	},
 	{
 		href: "/accounts",
+		tint: "#e6f4ea",
+		color: "#188038",
 		titleKey: "admin.nav.accounts",
 		descriptionKey: "admin.section.accounts",
 		icon: Users,
 	},
 	{
 		href: "/api-keys",
+		tint: "#fef7e0",
+		color: "#e37400",
 		titleKey: "admin.section.apiKeysTitle",
 		descriptionKey: "admin.section.apiKeys",
 		icon: KeyRound,
@@ -74,46 +91,43 @@ const sections: AdminSection[] = [
 export default function AdminSettingsPage() {
 	const { t } = useLanguage();
 	const user = useCurrentUser();
-
-	function canSee(section: AdminSection): boolean {
-		if (!section.permission) return true;
-		if (!user) return false;
-		if (section.permission === "primary") return user.isPrimaryAdmin;
-		if (section.permission === "domains") return user.isPrimaryAdmin || user.canManageDomains;
-		return user.isPrimaryAdmin || user.canManageUsers;
-	}
+	const branding = useBranding();
 
 	return (
 		<div>
-			<div className="mb-8">
-				<h1 className="text-2xl md:text-3xl font-medium text-neutral-900">{t("admin.title")}</h1>
-				<p className="mt-2 text-sm text-neutral-500">
-					{t("admin.description")}
-				</p>
+			<div className="mb-8 flex items-start gap-4">
+				<img src={branding.iconUrl} alt="" width={40} height={40} className="mt-1 h-10 w-10 shrink-0 object-contain max-md:hidden" />
+				<div>
+					<h1 className="text-[28px] leading-9 text-[#1f1f1f]">{t("admin.title")}</h1>
+					<p className="mt-1 text-sm text-[#444746]">{t("admin.description")}</p>
+				</div>
 			</div>
-			<div className="grid lg:grid-cols-2 gap-4">
-				{sections.filter(canSee).map((section) => {
+			<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				{sections.filter((section) => canSeeAdminLink(section, user)).map((section) => {
 					const Icon = section.icon;
 
 					return (
-						<Link key={section.href} href={section.href}>
-							<Card className="h-full rounded-3xl border-0 bg-white p-6 transition-colors hover:bg-blue-50/60">
-								<CardHeader className="flex-row items-center gap-4 space-y-0 py-0">
-									<div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-										<Icon className="h-5 w-5" />
-									</div>
-									<h2 className="text-base font-semibold leading-none">{t(section.titleKey)}</h2>
-								</CardHeader>
-								<CardContent className="pt-4">
-									<p className="text-sm text-neutral-500">{t(section.descriptionKey)}</p>
-								</CardContent>
-							</Card>
+						<Link
+							key={section.href}
+							href={section.href}
+							className="group flex items-start gap-4 rounded-2xl border border-[#e3e3e3] bg-white p-5 transition-shadow hover:shadow-[0_1px_2px_rgba(60,64,67,0.3),0_2px_6px_2px_rgba(60,64,67,0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b57d0]"
+						>
+							<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: section.tint, color: section.color }}>
+								<Icon className="h-6 w-6" strokeWidth={1.75} />
+							</span>
+							<span className="min-w-0 flex-1">
+								<span className="flex items-center justify-between gap-2">
+									<span className="text-base font-medium text-[#1f1f1f]">{t(section.titleKey)}</span>
+									<MaterialChevronRight size={22} className="shrink-0 text-[#444746] transition-transform group-hover:translate-x-0.5" />
+								</span>
+								<span className="mt-1 block text-sm leading-5 text-[#444746]">{t(section.descriptionKey)}</span>
+							</span>
 						</Link>
 					);
 				})}
 			</div>
 			{user?.isPrimaryAdmin && (
-				<div className="mt-8">
+				<div className="mt-6">
 					<AdminUpdateCard />
 				</div>
 			)}

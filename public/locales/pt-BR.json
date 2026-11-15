@@ -2478,5 +2478,16 @@
 	"summary.hide": "Ocultar resumo",
 	"summary.disclaimer": "Escrito por IA. Confira os detalhes importantes nas mensagens.",
 	"summary.failed": "Não foi possível resumir esta conversa. Tente novamente.",
-	"summary.rateLimited": "Muitos resumos agora. Tente novamente em um minuto."
+	"summary.rateLimited": "Muitos resumos agora. Tente novamente em um minuto.",
+	"navigation.help": "Ajuda",
+	"navigation.sidePanel": "Painel lateral",
+	"list.refresh": "Atualizar",
+	"list.selectMenu": "Selecionar",
+	"list.select.all": "Todas",
+	"list.select.read": "Lidas",
+	"list.moreActions": "Mais",
+	"list.markAllRead": "Marcar todas como lidas",
+	"admin.search.placeholder": "Pesquisar usuários, configurações ou recursos",
+	"admin.search.noResults": "Nenhuma configuração correspondente",
+	"update.checkButton": "Verificar atualizações"
 }

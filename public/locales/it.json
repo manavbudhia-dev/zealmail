@@ -2478,5 +2478,16 @@
 	"summary.hide": "Nascondi riepilogo",
 	"summary.disclaimer": "Scritto dall'IA. Verifica i dettagli importanti nei messaggi.",
 	"summary.failed": "Impossibile riassumere questa conversazione. Riprova.",
-	"summary.rateLimited": "Troppi riepiloghi in questo momento. Riprova tra un minuto."
+	"summary.rateLimited": "Troppi riepiloghi in questo momento. Riprova tra un minuto.",
+	"navigation.help": "Guida",
+	"navigation.sidePanel": "Riquadro laterale",
+	"list.refresh": "Aggiorna",
+	"list.selectMenu": "Seleziona",
+	"list.select.all": "Tutti",
+	"list.select.read": "Letti",
+	"list.moreActions": "Altro",
+	"list.markAllRead": "Segna tutti come letti",
+	"admin.search.placeholder": "Cerca utenti, impostazioni o funzionalità",
+	"admin.search.noResults": "Nessuna impostazione corrispondente",
+	"update.checkButton": "Controlla aggiornamenti"
 }

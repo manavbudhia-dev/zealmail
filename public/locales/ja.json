@@ -2445,5 +2445,16 @@
 	"summary.hide": "要約を隠す",
 	"summary.disclaimer": "AI が作成しました。重要な内容はメッセージで確認してください。",
 	"summary.failed": "この会話を要約できませんでした。もう一度お試しください。",
-	"summary.rateLimited": "現在要約のリクエストが多すぎます。1 分後にもう一度お試しください。"
+	"summary.rateLimited": "現在要約のリクエストが多すぎます。1 分後にもう一度お試しください。",
+	"navigation.help": "ヘルプ",
+	"navigation.sidePanel": "サイドパネル",
+	"list.refresh": "更新",
+	"list.selectMenu": "選択",
+	"list.select.all": "すべて",
+	"list.select.read": "既読",
+	"list.moreActions": "その他",
+	"list.markAllRead": "すべて既読にする",
+	"admin.search.placeholder": "ユーザー、設定、機能を検索",
+	"admin.search.noResults": "一致する設定はありません",
+	"update.checkButton": "アップデートを確認"
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Roboto } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { LanguageProvider } from "@/components/language-provider";
 import { DEFAULT_LOCALE, getDirection } from "@/lib/i18n/utils";
@@ -9,9 +9,11 @@ import { themeBootstrapScript } from "@/components/theme-utils";
 import { getHomeBranding } from "./home-server-utils";
 import "./globals.css";
 
-const geistSans = Geist({
-	variable: "--font-geist-sans",
+// Roboto is the open face closest to the Workspace UI; "Google Sans" is used first when installed.
+const appSans = Roboto({
+	variable: "--font-app-sans",
 	subsets: ["latin"],
+	weight: ["400", "500", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -58,7 +60,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 				<script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
 				<link rel="icon" href="/api/branding/icon"></link>
 			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+			<body className={`${appSans.variable} ${geistMono.variable} antialiased`}>
 				<LanguageProvider initialLocale={locale} initialMessages={messages}><Providers initialBranding={branding}>{children}</Providers></LanguageProvider>
 			</body>
 		</html>

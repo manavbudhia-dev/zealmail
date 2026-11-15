@@ -29,6 +29,8 @@ import { rememberOpenedUnreadMessage } from "./message-detail-navigation-utils";
 import { useConversationView } from "./use-conversation-view";
 import { OpenedIndicator } from "./message-open-status";
 import { MessageNotesPopover, NoteBadge } from "./message-notes-popover";
+import { MoreActionsMenu, SelectionMenu } from "./message-list-toolbar-menus";
+import { MaterialRefresh } from "@/components/material-icons";
 import type { MessageFolderPageProps, MessageListRowProps, RowMessageAction } from "./types";
 import {
 	formatMessageListTimestamp,
@@ -54,6 +56,8 @@ import {
 import clsx from "clsx";
 import { DueFollowUps } from "@/components/follow-ups/due-follow-ups";
 import { getUserTimeZone, zonedDateFields } from "@/lib/time/utils";
+import { getAvatarColorStyle } from "@/lib/avatar-colors";
+import { getAccountInitial } from "@/components/mailbox-selector-utils";
 
 const pageSize = 25;
 
@@ -245,8 +249,9 @@ function MessageListRowComponent({
 	}
 
 	const className =
-		`group relative grid min-h-12 w-full grid-cols-[24px_32px_minmax(160px,80px)_1fr_auto] items-center gap-3 px-6 text-left text-sm hover:z-10 hover:bg-[#f2f6fc] hover:shadow-sm has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset has-[a:focus-visible]:ring-blue-600 ${active || selected || opening ? "bg-blue-50" : ""
+		`group relative grid min-h-[52px] w-full grid-cols-[20px_28px_32px_minmax(120px,200px)_1fr_auto] items-center gap-3 pl-4 pr-6 text-left text-sm hover:z-10 hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset has-[a:focus-visible]:ring-blue-600 ${active || selected || opening ? "bg-[#c2dbff]" : unread ? "bg-white" : "bg-[#f2f6fc]"
 		} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`;
+	const avatarSeed = message.direction === "outbound" ? message.toAddr : message.fromAddr;
 	const content = (
 		<>
 			{config.folder === "inbox" && message.direction === "inbound" && (
@@ -255,31 +260,34 @@ function MessageListRowComponent({
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="relative z-10"
+						className="relative z-10 h-8 w-8 rounded-full p-0 hover:bg-[#e8eaed]"
 						onClick={() => {
 							void toggleMessageStar(message.id).then((result) => setStarred(result.starred));
 						}}
 						aria-label={t("message.star")}
 						aria-pressed={starred}
 					>
-						<Icon className={`h-4 w-4 ${starred ? "fill-amber-400 text-amber-400" : "text-neutral-300"}`} />
+						<Icon className={`h-5 w-5 ${starred ? "fill-[#f4b400] text-[#f4b400]" : "text-[#c4c7c5] group-hover:text-[#444746]"}`} />
 					</Button>
 				</Tooltip>
 			)}
 			{(config.folder !== "inbox" || message.direction !== "inbound") && (
-				<Icon className="h-4 w-4 text-neutral-300" />
+				<Icon className="mx-auto h-5 w-5 text-[#c4c7c5]" />
 			)}
-			<span className={clsx(unread && "font-semibold", getMessagePartyClassName(rowMessage, config.folder))}>
+			<span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium" style={getAvatarColorStyle(avatarSeed || party)}>
+				{getAccountInitial(party)}
+			</span>
+			<span className={clsx(unread && "font-bold", getMessagePartyClassName(rowMessage, config.folder))}>
 				{unread && <span className="sr-only">{t("list.unread")} </span>}
 				{party}
 
 				{(message.threadCount ?? 1) > 1 && (
-					<span className="ml-2 text-xs text-neutral-500">{message.threadCount}</span>
+					<span className="ml-1.5 text-xs font-normal text-[#5f6368]">{message.threadCount}</span>
 				)}
 			</span>
 			<span className="flex min-w-0 items-center text-neutral-700">
 				{/* A fixed slot keeps every subject aligned, with or without notes. */}
-				<span className="w-11 shrink-0">
+				<span className={message.noteCount ? "w-11 shrink-0" : "w-0 shrink-0"}>
 					{message.noteCount ? <MessageNotesPopover messageId={message.id} count={message.noteCount} preview={message.notePreview} /> : null}
 				</span>
 				<Link
@@ -296,12 +304,12 @@ function MessageListRowComponent({
 					<span className={unread ? "font-semibold text-neutral-900" : ""}>
 						{rowMessage.subject ?? t("list.noSubject")}
 					</span>
-					<span className="text-neutral-500"> - {getMessagePreview(rowMessage, config.folder, t)}</span>
+					<span className="text-[#5f6368]"> – {getMessagePreview(rowMessage, config.folder, t)}</span>
 				</Link>
 			</span>
 			<time
 				dateTime={message.createdAt}
-				className={`min-w-[96px] whitespace-nowrap text-right text-xs group-hover:opacity-0 ${unread ? "font-semibold text-neutral-800" : "text-neutral-500"
+				className={`min-w-[80px] whitespace-nowrap text-right text-xs group-hover:opacity-0 ${unread ? "font-bold text-[#1f1f1f]" : "text-[#5f6368]"
 					}`}
 			>
 				<OpenedIndicator count={message.openCount} />
@@ -532,19 +540,20 @@ export function MessageFolderPage({
 		return () => clearTimeout(timer);
 	}, [actionError]);
 
-	async function runSelectedActionReportingErrors(action: BulkMessageAction, folderId?: string) {
+	async function runSelectedActionReportingErrors(action: BulkMessageAction, folderId?: string, targetIds?: string[]) {
 		setActionError(null);
 		try {
-			await runSelectedAction(action, folderId);
+			await runSelectedAction(action, folderId, targetIds);
 		} catch (error) {
 			setActionError(error instanceof PartialDeleteError ? t("actions.error.deleteSkipped") : t("actions.error.update"));
 		}
 	}
 
-	async function runSelectedAction(action: BulkMessageAction, folderId?: string) {
-		if (selectedIds.length === 0) return;
+	async function runSelectedAction(action: BulkMessageAction, folderId?: string, targetIds: string[] = selectedIds) {
+		if (targetIds.length === 0) return;
+		const targetIdSet = new Set(targetIds);
 		if (action === "delete") {
-			const ids = expandSelectedIds(selectedIds);
+			const ids = expandSelectedIds(targetIds);
 			if (!await confirmDestructive(getPermanentDeleteConfirmText(ids.length, t))) return;
 		}
 
@@ -554,19 +563,19 @@ export function MessageFolderPage({
 		const inboxUnreadDelta = readValue === null || config.folder !== "inbox" || config.folderId
 			? 0
 			: messages
-				.filter((message) => selectedIdSet.has(message.id))
+				.filter((message) => targetIdSet.has(message.id))
 				.reduce((total, message) => total + getUnreadFlipCount(message, readValue), 0) * (readValue ? -1 : 1);
 		if (readValue !== null) {
 			updateMessages((current) => current.map((message) =>
-				selectedIdSet.has(message.id)
+				targetIdSet.has(message.id)
 					? { ...message, read: readValue, ...(message.threadMessageIds ? { threadUnread: readValue ? 0 : message.threadMessageIds.length } : {}) }
 					: message,
 			));
-			setSelectedMessages((current) => current.map((message) => ({ ...message, read: readValue })));
+			setSelectedMessages((current) => current.map((message) => targetIdSet.has(message.id) ? { ...message, read: readValue } : message));
 			if (inboxUnreadDelta) dispatchMessageCountsDelta({ inboxUnreadDelta });
 		}
 		try {
-			await runBulkMessageAction(expandSelectedIds(selectedIds), action, true, folderId);
+			await runBulkMessageAction(expandSelectedIds(targetIds), action, true, folderId);
 			setSelectedMessages([]);
 		} catch (error) {
 			if (readValue !== null) {
@@ -579,9 +588,19 @@ export function MessageFolderPage({
 		}
 	}
 
+	function selectWhere(predicate: (message: Message) => boolean) {
+		setSelectedMessages(messages.filter(predicate).map((message) => ({ id: message.id, read: message.read && !(message.threadUnread ?? 0) })));
+	}
+
+	function refreshList() {
+		window.dispatchEvent(new CustomEvent("mailflare:messages-changed", { detail: { kind: "refresh" } }));
+	}
+
+	const visibleUnreadIds = messages.filter((message) => isMessageListRowUnread(message)).map((message) => message.id);
+
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className={`flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 ${compact ? "px-4" : "px-4.5 md:px-6"}`}>
+			<div className={`flex h-12 shrink-0 items-center justify-between ${compact ? "border-b border-neutral-200 px-4" : "px-4.5 md:pl-[26px] md:pr-4 max-md:border-b max-md:border-neutral-200"}`}>
 				{selectedMessageId ? <h2 className="sr-only">{title}</h2> : <h1 className="sr-only">{title}</h1>}
 				<div className="flex items-center gap-3 w-full">
 					<Tooltip label={t("list.selectAll")}>
@@ -593,6 +612,18 @@ export function MessageFolderPage({
 							aria-label={t("list.selectAll")}
 						/>
 					</Tooltip>
+					{!compact && !isMobile && (
+						<SelectionMenu
+							label={t("list.selectMenu")}
+							items={[
+								{ label: t("list.select.all"), onSelect: () => selectWhere(() => true) },
+								{ label: t("common.none"), onSelect: () => setSelectedMessages([]) },
+								{ label: t("list.select.read"), onSelect: () => selectWhere((message) => !isMessageListRowUnread(message)) },
+								{ label: t("list.unread"), onSelect: () => selectWhere((message) => isMessageListRowUnread(message)) },
+								{ label: t("list.starred"), onSelect: () => selectWhere((message) => !!message.starred) },
+							]}
+						/>
+					)}
 					{selectedIds.length > 0 && !compact ? (
 						<BulkMessageToolbar
 							selectedCount={selectedIds.length}
@@ -602,10 +633,20 @@ export function MessageFolderPage({
 							pending={pendingBulkAction}
 							folder={config.folderId ? undefined : config.folder}
 						/>
+					) : (compact || isMobile) ? (
+						<p aria-hidden="true" className="truncate font-semibold text-neutral-900 pl-1">{title}</p>
 					) : (
-						(compact || isMobile) && (
-							<p aria-hidden="true" className="truncate font-semibold text-neutral-900 pl-1">{title}</p>
-						)
+						<div className="ml-2 flex items-center gap-1">
+							<Tooltip label={t("list.refresh")}>
+								<button type="button" onClick={refreshList} aria-label={t("list.refresh")} className="flex h-10 w-10 items-center justify-center rounded-full text-[#444746] hover:bg-[#e8eaed]">
+									<MaterialRefresh size={20} />
+								</button>
+							</Tooltip>
+							<MoreActionsMenu
+								label={t("list.moreActions")}
+								items={[{ label: t("list.markAllRead"), disabled: visibleUnreadIds.length === 0, onSelect: () => void runSelectedActionReportingErrors("read", undefined, visibleUnreadIds) }]}
+							/>
+						</div>
 					)}
 				</div>
 				{(selectedIds.length === 0 || compact) && (
@@ -681,7 +722,7 @@ export function MessageFolderPage({
 
 			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-gutter-stable">
 				{config.folder === "inbox" && !config.folderId && offset === 0 && !mailboxesLoading && <DueFollowUps mailboxId={selectedMailbox?.id} />}
-				<div role="list" aria-label={title} className="divide-y divide-neutral-100">
+				<div role="list" aria-label={title} className="divide-y divide-[#eceff1]">
 					{messages.map((message) => (
 						<MessageListRow
 							key={message.id}

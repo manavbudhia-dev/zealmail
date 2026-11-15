@@ -2463,5 +2463,16 @@
 	"summary.hide": "پنهان کردن خلاصه",
 	"summary.disclaimer": "نوشته‌شده با هوش مصنوعی. جزئیات مهم را در پیام‌ها بررسی کنید.",
 	"summary.failed": "خلاصه‌سازی این گفتگو ممکن نشد. دوباره تلاش کنید.",
-	"summary.rateLimited": "درخواست‌های خلاصه در حال حاضر زیاد است. یک دقیقه دیگر تلاش کنید."
+	"summary.rateLimited": "درخواست‌های خلاصه در حال حاضر زیاد است. یک دقیقه دیگر تلاش کنید.",
+	"navigation.help": "راهنما",
+	"navigation.sidePanel": "پنل کناری",
+	"list.refresh": "بازخوانی",
+	"list.selectMenu": "انتخاب",
+	"list.select.all": "همه",
+	"list.select.read": "خوانده‌شده",
+	"list.moreActions": "بیشتر",
+	"list.markAllRead": "علامت‌گذاری همه به‌عنوان خوانده‌شده",
+	"admin.search.placeholder": "جستجوی کاربران، تنظیمات یا ویژگی‌ها",
+	"admin.search.noResults": "تنظیمی مطابقت ندارد",
+	"update.checkButton": "بررسی به‌روزرسانی‌ها"
 }

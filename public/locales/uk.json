@@ -2493,5 +2493,16 @@
 	"summary.hide": "Сховати підсумок",
 	"summary.disclaimer": "Написано ШІ. Перевіряйте важливі деталі в самих листах.",
 	"summary.failed": "Не вдалося підсумувати листування. Спробуйте ще раз.",
-	"summary.rateLimited": "Забагато запитів зараз. Спробуйте за хвилину."
+	"summary.rateLimited": "Забагато запитів зараз. Спробуйте за хвилину.",
+	"navigation.help": "Довідка",
+	"navigation.sidePanel": "Бічна панель",
+	"list.refresh": "Оновити",
+	"list.selectMenu": "Вибрати",
+	"list.select.all": "Усі",
+	"list.select.read": "Прочитані",
+	"list.moreActions": "Ще",
+	"list.markAllRead": "Позначити всі як прочитані",
+	"admin.search.placeholder": "Пошук користувачів, налаштувань або функцій",
+	"admin.search.noResults": "Немає відповідних налаштувань",
+	"update.checkButton": "Перевірити оновлення"
 }

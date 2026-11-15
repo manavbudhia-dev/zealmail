@@ -2463,5 +2463,16 @@
 	"summary.hide": "Hide summary",
 	"summary.disclaimer": "Written by AI. Check important details in the messages.",
 	"summary.failed": "Couldn't summarize this conversation. Try again.",
-	"summary.rateLimited": "Too many summaries right now. Try again in a minute."
+	"summary.rateLimited": "Too many summaries right now. Try again in a minute.",
+	"navigation.help": "Help",
+	"navigation.sidePanel": "Side panel",
+	"list.refresh": "Refresh",
+	"list.selectMenu": "Select",
+	"list.select.all": "All",
+	"list.select.read": "Read",
+	"list.moreActions": "More",
+	"list.markAllRead": "Mark all as read",
+	"admin.search.placeholder": "Search for users, settings, or features",
+	"admin.search.noResults": "No matching settings",
+	"update.checkButton": "Check for updates"
 }

@@ -2463,5 +2463,16 @@
 	"summary.hide": "خلاصہ چھپائیں",
 	"summary.disclaimer": "AI نے لکھا ہے۔ اہم تفصیلات پیغامات میں چیک کریں۔",
 	"summary.failed": "اس گفتگو کا خلاصہ نہیں بن سکا۔ دوبارہ کوشش کریں۔",
-	"summary.rateLimited": "اس وقت بہت زیادہ خلاصے کی درخواستیں ہیں۔ ایک منٹ بعد دوبارہ کوشش کریں۔"
+	"summary.rateLimited": "اس وقت بہت زیادہ خلاصے کی درخواستیں ہیں۔ ایک منٹ بعد دوبارہ کوشش کریں۔",
+	"navigation.help": "مدد",
+	"navigation.sidePanel": "سائیڈ پینل",
+	"list.refresh": "ریفریش کریں",
+	"list.selectMenu": "منتخب کریں",
+	"list.select.all": "سبھی",
+	"list.select.read": "پڑھے ہوئے",
+	"list.moreActions": "مزید",
+	"list.markAllRead": "سب کو پڑھا ہوا نشان زد کریں",
+	"admin.search.placeholder": "صارفین، ترتیبات یا خصوصیات تلاش کریں",
+	"admin.search.noResults": "کوئی مماثل ترتیب نہیں",
+	"update.checkButton": "اپ ڈیٹس چیک کریں"
 }

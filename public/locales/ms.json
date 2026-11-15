@@ -2459,5 +2459,16 @@
 	"summary.hide": "Sembunyikan ringkasan",
 	"summary.disclaimer": "Ditulis oleh AI. Semak butiran penting dalam mesej.",
 	"summary.failed": "Tidak dapat meringkaskan perbualan ini. Cuba lagi.",
-	"summary.rateLimited": "Terlalu banyak ringkasan sekarang. Cuba lagi dalam seminit."
+	"summary.rateLimited": "Terlalu banyak ringkasan sekarang. Cuba lagi dalam seminit.",
+	"navigation.help": "Bantuan",
+	"navigation.sidePanel": "Panel sisi",
+	"list.refresh": "Muat semula",
+	"list.selectMenu": "Pilih",
+	"list.select.all": "Semua",
+	"list.select.read": "Dibaca",
+	"list.moreActions": "Lagi",
+	"list.markAllRead": "Tandakan semua sebagai dibaca",
+	"admin.search.placeholder": "Cari pengguna, tetapan atau ciri",
+	"admin.search.noResults": "Tiada tetapan yang sepadan",
+	"update.checkButton": "Semak kemas kini"
 }

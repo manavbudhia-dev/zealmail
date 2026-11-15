@@ -63,6 +63,7 @@ import {
 	FolderPlusIcon as HugeFolderPlusIcon,
 	GlobalIcon as HugeGlobeIcon,
 	HardDriveIcon as HugeHardDriveIcon,
+	Home01Icon as HugeHome01Icon,
 	HelpCircleIcon as HugeHelpCircleIcon,
 	ImageIcon as HugeImageIcon,
 	ImagePlusIcon as HugeImagePlusIcon,
@@ -249,6 +250,7 @@ export const Forward = function (props) {
 }
 export const Globe2 = createIcon(HugeGlobeIcon, "Globe2");
 export const HardDrive = createIcon(HugeHardDriveIcon, "HardDrive");
+export const Home = createIcon(HugeHome01Icon, "Home");
 export const HelpCircle = createIcon(HugeHelpCircleIcon, "HelpCircle");
 export const Image = createIcon(HugeImageIcon, "Image");
 export const ImagePlus = createIcon(HugeImagePlusIcon, "ImagePlus");

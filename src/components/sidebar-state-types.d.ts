@@ -23,7 +23,8 @@ export type SidebarHeaderProps = {
 };
 
 export type SidebarScaffoldProps = {
-	header: import("react").ReactNode;
+	/** Shown above the menu only in the phone drawer; on wider screens the app bar carries the logo. */
+	header?: import("react").ReactNode;
 	footer?: import("react").ReactNode;
 	children: import("react").ReactNode;
 	className?: string;

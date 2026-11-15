@@ -2478,5 +2478,16 @@
 	"summary.hide": "Ocultar resumen",
 	"summary.disclaimer": "Escrito por IA. Comprueba los detalles importantes en los mensajes.",
 	"summary.failed": "No se pudo resumir esta conversación. Inténtalo de nuevo.",
-	"summary.rateLimited": "Demasiados resúmenes ahora mismo. Inténtalo de nuevo en un minuto."
+	"summary.rateLimited": "Demasiados resúmenes ahora mismo. Inténtalo de nuevo en un minuto.",
+	"navigation.help": "Ayuda",
+	"navigation.sidePanel": "Panel lateral",
+	"list.refresh": "Actualizar",
+	"list.selectMenu": "Seleccionar",
+	"list.select.all": "Todos",
+	"list.select.read": "Leídos",
+	"list.moreActions": "Más",
+	"list.markAllRead": "Marcar todos como leídos",
+	"admin.search.placeholder": "Buscar usuarios, ajustes o funciones",
+	"admin.search.noResults": "No hay ajustes que coincidan",
+	"update.checkButton": "Buscar actualizaciones"
 }

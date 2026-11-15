@@ -2459,5 +2459,16 @@
 	"summary.hide": "ซ่อนสรุป",
 	"summary.disclaimer": "เขียนโดย AI โปรดตรวจสอบรายละเอียดสำคัญในข้อความ",
 	"summary.failed": "สรุปบทสนทนานี้ไม่ได้ ลองอีกครั้ง",
-	"summary.rateLimited": "มีคำขอสรุปมากเกินไปในขณะนี้ ลองอีกครั้งในอีกหนึ่งนาที"
+	"summary.rateLimited": "มีคำขอสรุปมากเกินไปในขณะนี้ ลองอีกครั้งในอีกหนึ่งนาที",
+	"navigation.help": "ความช่วยเหลือ",
+	"navigation.sidePanel": "แผงด้านข้าง",
+	"list.refresh": "รีเฟรช",
+	"list.selectMenu": "เลือก",
+	"list.select.all": "ทั้งหมด",
+	"list.select.read": "อ่านแล้ว",
+	"list.moreActions": "เพิ่มเติม",
+	"list.markAllRead": "ทำเครื่องหมายว่าอ่านแล้วทั้งหมด",
+	"admin.search.placeholder": "ค้นหาผู้ใช้ การตั้งค่า หรือฟีเจอร์",
+	"admin.search.noResults": "ไม่มีการตั้งค่าที่ตรงกัน",
+	"update.checkButton": "ตรวจหาอัปเดต"
 }

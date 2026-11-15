@@ -3,36 +3,20 @@
 import packageJson from "../../package.json";
 import { UPSTREAM_SOURCE_URL, ZEALMAIL_SOURCE_URL } from "@/lib/zealmail";
 import { useSidebar } from "./sidebar-state";
-import { useShortcuts } from "./shortcuts";
-import { Keyboard } from "@/components/icons";
 import { useLanguage } from "./language-provider";
+import { SidebarStorageMeter } from "./sidebar-storage-meter";
 
 export function SidebarFooter() {
-	const { t } = useLanguage();
 	const { minimal } = useSidebar();
-	const { openHelpModal, shortcutsEnabled, shortcutsPreferenceLoading } = useShortcuts();
 	if (minimal) return null;
 
-  return (
-    <div className="px-3 pt-3 flex flex-col gap-2">
-      {shortcutsEnabled && !shortcutsPreferenceLoading && (
-        <button
-          type="button"
-          onClick={openHelpModal}
-          className="flex items-center justify-between w-full px-2.5 py-1.5 text-xs text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 rounded-lg transition-colors"
-        >
-          <span className="flex items-center gap-1.5">
-            <Keyboard className="w-3.5 h-3.5 text-neutral-400" />
-            {t("navigation.shortcuts")}
-          </span>
-          <kbd className="px-1.5 py-0.5 font-mono text-[10px] bg-white border border-neutral-200 rounded text-neutral-500 shadow-2xs">
-            ?
-          </kbd>
-        </button>
-      )}
-      <PoweredBy />
-    </div>
-  );
+	// Help and keyboard shortcuts live in the top bar; the menu foot keeps storage and the source credit.
+	return (
+		<div className="flex flex-col gap-1 pt-2">
+			<SidebarStorageMeter />
+			<PoweredBy className="px-3" />
+		</div>
+	);
 }
 
 /** The "ZealMail vX, based on Mailflare" credit and source link, shared by the mail and Drive sidebars. */
