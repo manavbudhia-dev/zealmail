@@ -53,5 +53,17 @@ test("a forged message reusing a Message-ID cannot land on the original's key", 
 
 test("inboundMessageId derives a stable id from the key", async () => {
 	const key = await inboundStorageKey(raw("Message-ID: <x@y>"), "mb1");
-	assert.equal(await inboundMessageId(key), await inboundMessageId(key));
+	assert.equal(await inboundMessageId(key, "mb1"), await inboundMessageId(key, "mb1"));
+});
+
+test("inboundMessageId differs per mailbox for one shared object", async () => {
+	const key = await inboundStorageKey(raw("Message-ID: <x@y>"));
+	assert.notEqual(await inboundMessageId(key, "mb1"), await inboundMessageId(key, "mb2"));
+});
+
+test("inboundStorageKey without a mailbox differs per recipient", async () => {
+	const a = await inboundStorageKey(raw("Message-ID: <x@y>"), undefined, "a@example.com");
+	const b = await inboundStorageKey(raw("Message-ID: <x@y>"), undefined, "b@example.com");
+	assert.notEqual(a, b);
+	assert.equal(a, await inboundStorageKey(raw("Message-ID: <x@y>"), undefined, "A@example.com "));
 });

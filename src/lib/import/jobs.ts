@@ -276,10 +276,15 @@ export async function processImportJob(env: CloudflareEnv, delivered: ImportJobM
 			updatedAt: now,
 			...(chunk.done ? { status: "completed" as const, finishedAt: now } : {}),
 		})
-		.where(and(eq(importJobs.id, job.id), inArray(importJobs.status, [...ACTIVE])))
+		// The cursor this chunk started from must still be current. A redelivered or
+		// resumed message can run the same chunk concurrently; without this both would
+		// add their counts to the same stale totals and both enqueue the next chunk,
+		// leaving two chains importing the job side by side from then on.
+		.where(and(eq(importJobs.id, job.id), inArray(importJobs.status, [...ACTIVE]), eq(importJobs.cursor, job.cursor)))
 		.returning({ id: importJobs.id });
 
-	// Cancelled while the chunk ran: the cancel already cleaned up.
+	// Cancelled while the chunk ran (the cancel already cleaned up), or another
+	// delivery already recorded this chunk and carries the job on.
 	if (!recorded.length) return;
 	if (chunk.consumedKey) await env.BUCKET.delete(chunk.consumedKey).catch(() => undefined);
 	if (!chunk.done) await enqueue(env, message);

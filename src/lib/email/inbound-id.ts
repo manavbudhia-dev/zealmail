@@ -1,7 +1,12 @@
-export async function inboundMessageId(rawR2Key: string): Promise<string> {
-	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawR2Key));
-	const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-	return `msg_${hex}`;
+/**
+ * Row id for an inbound message. Scoped by mailbox as well as the raw object:
+ * one stored object can reach several mailboxes (an SMTP transaction with
+ * several local recipients, before routing could pick a mailbox), and an id
+ * from the key alone would make every copy after the first collide with it and
+ * be dropped by the insert's `onConflictDoNothing`.
+ */
+export async function inboundMessageId(rawR2Key: string, mailboxId: string): Promise<string> {
+	return `msg_${await sha256Hex([mailboxId, "\0", rawR2Key])}`;
 }
 
 async function sha256Hex(parts: (string | Uint8Array)[]): Promise<string> {
@@ -26,6 +31,10 @@ async function sha256Hex(parts: (string | Uint8Array)[]): Promise<string> {
  * a message's `Message-ID` could otherwise overwrite its stored raw MIME or
  * make the real delivery look like a duplicate.
  */
-export async function inboundStorageKey(raw: ArrayBuffer, mailboxId?: string): Promise<string> {
-	return `inbound/${await sha256Hex([mailboxId ?? "", "\0", new Uint8Array(raw)])}.eml`;
+export async function inboundStorageKey(raw: ArrayBuffer, mailboxId?: string, recipient?: string): Promise<string> {
+	// Without a mailbox (routing could not be resolved yet) fall back to the
+	// recipient, so copies for different recipients never share one object and
+	// deleting one copy cannot remove another's raw MIME.
+	const scope = mailboxId ?? (recipient ? `rcpt:${recipient.trim().toLowerCase()}` : "");
+	return `inbound/${await sha256Hex([scope, "\0", new Uint8Array(raw)])}.eml`;
 }

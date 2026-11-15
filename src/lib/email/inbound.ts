@@ -111,7 +111,7 @@ export async function processInboundMessage(
 		await env.BUCKET.delete(payload.rawR2Key);
 		return;
 	}
-	const messageId = await inboundMessageId(payload.rawR2Key);
+	const messageId = await inboundMessageId(payload.rawR2Key, decision.mailbox.mailboxId);
 	const snippet = buildSnippet(parsed.text, parsed.html);
 	const deliveredAddress = getEmailAddress(payload.to) || `${decision.mailbox.localPart}@${decision.mailbox.hostname}`;
 	// Keep the whole To header so reply-all can address everyone; rules and

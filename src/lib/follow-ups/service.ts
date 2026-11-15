@@ -21,7 +21,8 @@ const hasReply = sql<number>`exists (
 
 async function markReplied(env: CloudflareEnv, ids: string[]): Promise<void> {
 	if (ids.length === 0) return;
-	await getDb(env).update(followUps).set({ status: "replied" }).where(inArray(followUps.id, ids));
+	// Only open reminders: a dismissal that landed after the caller read the row stays dismissed.
+	await getDb(env).update(followUps).set({ status: "replied" }).where(and(inArray(followUps.id, ids), inArray(followUps.status, ["pending", "due"])));
 }
 
 /** Arms (or re-arms) the reminder on a sent message. */
@@ -47,7 +48,9 @@ export async function runFollowUpReminders(env: CloudflareEnv, now: Date): Promi
 			.limit(REMINDER_BATCH);
 		await markReplied(env, rows.filter((row) => row.replied).map((row) => row.id));
 		const due = rows.filter((row) => !row.replied).map((row) => row.id);
-		if (due.length) await db.update(followUps).set({ status: "due" }).where(inArray(followUps.id, due));
+		// Re-check the state the select saw: a snooze or dismissal that landed in between
+		// must not be overwritten (a dismissed reminder would come back, a snooze would be lost).
+		if (due.length) await db.update(followUps).set({ status: "due" }).where(and(inArray(followUps.id, due), eq(followUps.status, "pending"), lte(followUps.dueAt, now)));
 	} catch (error) {
 		if (!isMissingTableError(error)) throw error;
 	}

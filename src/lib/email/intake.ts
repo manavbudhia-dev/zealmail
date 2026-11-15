@@ -38,7 +38,7 @@ export async function intakeIncomingMail(env: CloudflareEnv, input: IntakeInput,
 
 	// A relay retry replays the same bytes, so key the object on a content hash
 	// (scoped by mailbox): the consumer dedupes by `(mailboxId, rawR2Key)`.
-	const rawR2Key = await inboundStorageKey(input.raw, decision?.mailbox?.mailboxId);
+	const rawR2Key = await inboundStorageKey(input.raw, decision?.mailbox?.mailboxId, input.to);
 	await env.BUCKET.put(rawR2Key, input.raw, {
 		httpMetadata: { contentType: "message/rfc822" },
 		customMetadata: { from: input.from, to: input.to },

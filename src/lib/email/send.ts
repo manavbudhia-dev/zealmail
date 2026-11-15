@@ -430,6 +430,9 @@ export async function processOutboundQueue(
 		await enqueueScheduledDelivery(env, delivery, scheduledAt);
 		return;
 	}
+	// Load first: once claimed, a retry sees "sending" and gives up, so a storage
+	// error after the claim would strand the message in the queue forever.
+	delivery.attachments = await loadMessageAttachmentContents(env, payload.messageId);
 	// Claim the job before delivering. Cancelling deletes only a job that is still
 	// "queued", so exactly one of cancel and delivery wins.
 	const claimed = await claimJob(db, payload.jobId, job.scheduledAt);
@@ -440,6 +443,5 @@ export async function processOutboundQueue(
 		if (current?.status === "queued") await processOutboundQueue(env, payload);
 		return;
 	}
-	delivery.attachments = await loadMessageAttachmentContents(env, payload.messageId);
 	await deliverEmail(env, delivery);
 }

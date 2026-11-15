@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import type { AppDatabase } from "@/db";
 import { webhookDeliveries, webhooks } from "@/db/schema";
@@ -95,6 +95,16 @@ async function attemptDelivery(
 	const startedAt = Date.now();
 	const now = new Date();
 
+	// Claim this attempt number first. A queued retry and a manual retry can run
+	// for the same delivery at once; without the claim both would POST and each
+	// schedule its own follow-up, splitting one delivery into parallel retry chains.
+	const claimed = await db
+		.update(webhookDeliveries)
+		.set({ attempts, lastAttemptAt: now, nextRetryAt: null })
+		.where(and(eq(webhookDeliveries.id, delivery.id), eq(webhookDeliveries.attempts, delivery.attempts)))
+		.returning({ id: webhookDeliveries.id });
+	if (!claimed.length) return "pending";
+
 	let responseStatus: number | null = null;
 	let error: string | null = null;
 
@@ -164,7 +174,7 @@ export async function processWebhookRetry(
 	env: CloudflareEnv,
 	message: WebhookRetryMessage,
 ): Promise<void> {
-	await runDelivery(env, message.deliveryId);
+	await runDelivery(env, message.deliveryId, { scheduledRetry: true });
 }
 
 /**
@@ -174,7 +184,7 @@ export async function processWebhookRetry(
 export async function runDelivery(
 	env: CloudflareEnv,
 	deliveryId: string,
-	options?: { userId?: string },
+	options?: { userId?: string; scheduledRetry?: boolean },
 ): Promise<{ status: WebhookDeliveryStatus } | null> {
 	const db = getDb(env);
 	const [delivery] = await db
@@ -183,10 +193,14 @@ export async function runDelivery(
 		.where(eq(webhookDeliveries.id, deliveryId))
 		.limit(1);
 	if (!delivery) return null;
+	// A scheduled retry is stale once the delivery succeeded or ran out (for example
+	// after a manual retry): re-sending would deliver the event twice.
+	if (options?.scheduledRetry && delivery.status !== "retrying") return { status: delivery.status as WebhookDeliveryStatus };
 
 	const [hook] = await db.select().from(webhooks).where(eq(webhooks.id, delivery.webhookId)).limit(1);
 	if (!hook) return null;
 	if (options?.userId && hook.userId !== options.userId) return null;
+	if (options?.scheduledRetry && !hook.enabled) return { status: delivery.status as WebhookDeliveryStatus };
 
 	return { status: await attemptDelivery(env, db, hook, delivery) };
 }
