@@ -1,0 +1,19 @@
+ZealMail
+========
+
+ZealMail is a modified version of Mailflare
+(https://github.com/hieunc229/mailflare), Copyright its authors,
+licensed under the GNU Affero General Public License v3 (see LICENSE).
+
+Changes made in this version (2026-11-15):
+- Renamed the user-facing product name from "Mailflare" to "ZealMail".
+- Removed license-key gating: all Pro and Team features (custom branding,
+  unlimited accounts, shared mailboxes, account forwarding) are always enabled
+  (src/lib/licenses/service.ts). The Licenses page now states this.
+- Added a source-code link and upstream credit in the sidebar footer, as
+  required by AGPL section 13 (src/lib/zealmail.ts).
+- Removed the self-update workflow that would replace this code with upstream.
+- Updated the license-gate tests to match.
+
+The Cloudflare Worker is still named "mailflare" because its bindings,
+Email Routing rules and service self-reference depend on that name.
