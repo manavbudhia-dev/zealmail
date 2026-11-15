@@ -5,7 +5,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { verifyPassword } from "@/lib/auth/password";
 import { deviceLoginSchema } from "@/lib/validators";
-import { allowDeviceLoginAttempt } from "@/lib/auth/rate-limit";
+import { allowDeviceLoginAttempt, allowSecondFactorAttempt } from "@/lib/auth/rate-limit";
 import { readJsonBody } from "@/lib/http/request";
 import { RequestBodyTooLargeError } from "@/lib/http/errors";
 import { recordAuthActivity } from "@/lib/auth/activity";
@@ -61,6 +61,7 @@ export async function POST(request: Request) {
 		if (!challengeUserId) return json({ error: "This sign-in attempt has expired. Start again." }, 401);
 		const [user] = await db.select().from(users).where(eq(users.id, challengeUserId)).limit(1);
 		if (!user || user.disabled || user.deletedAt) return json({ error: "Account disabled" }, 403);
+		if (!(await allowSecondFactorAttempt(env, user.id))) return json({ error: "Too many attempts. Try again in a minute." }, 429);
 		if (!(await verifySecondFactor(env, user, parsed.data.code))) return json({ error: "That code did not match" }, 401);
 		if (!(await consumeLoginChallenge(env, parsed.data.challengeToken))) {
 			return json({ error: "This sign-in attempt has expired. Start again." }, 401);

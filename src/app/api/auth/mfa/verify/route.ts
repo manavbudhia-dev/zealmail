@@ -3,7 +3,7 @@ import { getEnv } from "@/lib/cloudflare";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { mfaVerifySchema } from "@/lib/validators";
-import { allowLoginAttempt } from "@/lib/auth/rate-limit";
+import { allowLoginAttempt, allowSecondFactorAttempt } from "@/lib/auth/rate-limit";
 import { readJsonBody } from "@/lib/http/request";
 import { RequestBodyTooLargeError } from "@/lib/http/errors";
 import { recordAuthActivity } from "@/lib/auth/activity";
@@ -34,6 +34,9 @@ export async function POST(request: Request) {
 	const db = getDb(env);
 	const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 	if (!user || user.disabled || user.deletedAt) return authError("account_disabled", 403);
+	if (!(await allowSecondFactorAttempt(env, user.id))) {
+		return authError("rate_limited", 429, { "Retry-After": "60" });
+	}
 	const method = await verifySecondFactor(env, user, parsed.data.code);
 	if (!method) return authError("code_mismatch", 401);
 	if (!(await consumeLoginChallenge(env, parsed.data.challengeToken))) {

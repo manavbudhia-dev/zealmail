@@ -43,3 +43,19 @@ export async function allowLoginAttempt(env: CloudflareEnv, request: Request): P
 		return true;
 	}
 }
+
+/**
+ * Second-factor guesses per account, whatever IP they come from. The per-IP login
+ * limit alone lets someone holding the password spread six-digit guesses over many
+ * addresses; this caps them at the stricter device budget per account per minute.
+ */
+export async function allowSecondFactorAttempt(env: CloudflareEnv, userId: string): Promise<boolean> {
+	const limiter = env.DEVICE_LOGIN_RATE_LIMIT ?? env.LOGIN_RATE_LIMIT;
+	if (!limiter) return true;
+	try {
+		return (await limiter.limit({ key: `mfa:${userId}` })).success;
+	} catch (error) {
+		console.warn("Second-factor rate limiter unavailable", error);
+		return true;
+	}
+}

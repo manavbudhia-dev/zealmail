@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import { conversationNotes, messages, outboundJobs } from "@/db/schema";
 import { newId } from "@/lib/ids";
@@ -205,6 +205,9 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 	const { input, messageId, jobId, from, mailboxId, to, cc, bcc, headers, attachments } = delivery;
 	const db = getDb(env);
 	const toAddr = joinEmailAddressList(to);
+	// Set once the provider has accepted the message. After that point the email is
+	// out, so a later bookkeeping error must not mark it failed or announce a failure.
+	let acceptedMessageId: string | null = null;
 	try {
 		const provider = await getOutboundProviderConfig(env, from);
 		// Cloudflare's 5 MiB cap forces big files into download links; Resend takes
@@ -244,6 +247,7 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 			},
 			jobId,
 		);
+		acceptedMessageId = response.messageId;
 
 		// A fresh message starts its own conversation; Cloudflare's Message-ID is what
 		// any reply will name in In-Reply-To, so key the thread by it.
@@ -284,6 +288,14 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 			metadata: { to: toAddr, cc: cc.length ? joinEmailAddressList(cc) : undefined, subject: input.subject },
 		});
 	} catch (err) {
+		if (acceptedMessageId !== null) {
+			// Delivered, but recording it failed. Record the send as best we can; throwing
+			// would tell the composer it failed and invite a duplicate resend.
+			console.error(`Post-send bookkeeping failed for ${messageId}`, err);
+			await db.update(messages).set({ status: "sent", providerMessageId: acceptedMessageId }).where(eq(messages.id, messageId)).catch(() => undefined);
+			await db.update(outboundJobs).set({ status: "sent", updatedAt: new Date() }).where(eq(outboundJobs.id, jobId)).catch(() => undefined);
+			return;
+		}
 		const error = err instanceof Error ? err.message : "Send failed";
 		await db.update(messages).set({ status: "failed" }).where(eq(messages.id, messageId));
 		await db
@@ -444,4 +456,56 @@ export async function processOutboundQueue(
 		return;
 	}
 	await deliverEmail(env, delivery);
+}
+
+/** A claimed send that has not finished in this long was interrupted (the Worker died mid-send). */
+const STUCK_SENDING_MS = 15 * 60_000;
+/** A scheduled send this overdue lost its queue message (enqueue failed or the message expired). */
+const OVERDUE_QUEUED_MS = 15 * 60_000;
+const SWEEP_BATCH = 100;
+
+/**
+ * Five-minute cron: recovers sends the queue alone cannot.
+ *
+ * - "sending" jobs older than the window were interrupted after their claim. Whether the provider
+ *   accepted them is unknown, so they are marked failed (visible to the user, who can resend)
+ *   rather than retried, which could deliver twice.
+ * - Scheduled "queued" jobs well past their time lost their wake-up message. Re-enqueueing is safe:
+ *   the consumer claims the job, so a late original message and the new one cannot both send.
+ */
+export async function sweepOutboundJobs(env: CloudflareEnv, now = new Date()): Promise<void> {
+	const db = getDb(env);
+	const stuck = await db
+		.select({ id: outboundJobs.id, messageId: outboundJobs.messageId, userId: outboundJobs.userId })
+		.from(outboundJobs)
+		.where(and(eq(outboundJobs.status, "sending"), lt(outboundJobs.updatedAt, new Date(now.getTime() - STUCK_SENDING_MS))))
+		.limit(SWEEP_BATCH);
+	for (const job of stuck) {
+		const error = "Delivery was interrupted and may not have gone out. Check with the recipient before resending.";
+		const updated = await db
+			.update(outboundJobs)
+			.set({ status: "failed", error, updatedAt: now })
+			.where(and(eq(outboundJobs.id, job.id), eq(outboundJobs.status, "sending")))
+			.returning({ id: outboundJobs.id });
+		if (!updated.length || !job.messageId) continue;
+		await db.update(messages).set({ status: "failed" }).where(and(eq(messages.id, job.messageId), eq(messages.status, "queued")));
+		await dispatchWebhooks(env, job.userId, "message.failed", { messageId: job.messageId, error });
+	}
+
+	const overdue = await db
+		.select({ id: outboundJobs.id, messageId: outboundJobs.messageId, scheduledAt: outboundJobs.scheduledAt })
+		.from(outboundJobs)
+		.where(and(
+			eq(outboundJobs.status, "queued"),
+			isNotNull(outboundJobs.scheduledAt),
+			lt(outboundJobs.scheduledAt, new Date(now.getTime() - OVERDUE_QUEUED_MS)),
+			// Not re-woken within the window either (updatedAt moves on each re-enqueue below).
+			lt(outboundJobs.updatedAt, new Date(now.getTime() - OVERDUE_QUEUED_MS)),
+		))
+		.limit(SWEEP_BATCH);
+	for (const job of overdue) {
+		if (!job.messageId || !job.scheduledAt) continue;
+		await db.update(outboundJobs).set({ updatedAt: now }).where(and(eq(outboundJobs.id, job.id), eq(outboundJobs.status, "queued")));
+		await enqueueOutboundJob(env, job.id, job.messageId, job.scheduledAt).catch((error) => console.error(`Re-enqueue failed for ${job.id}`, error));
+	}
 }
