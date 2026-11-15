@@ -2438,5 +2438,12 @@
 	"account.openApps": "Buka menu aplikasi",
 	"account.signOutAccountConfirm": "Keluar dari {name} ({email})? Anda perlu masuk lagi untuk menggunakan akun ini.",
 	"invite.acceptedLabel": "Diterima",
-	"invite.declinedLabel": "Ditolak"
+	"invite.declinedLabel": "Ditolak",
+	"summary.button": "Ringkas percakapan",
+	"summary.loading": "Meringkas…",
+	"summary.title": "Ringkasan",
+	"summary.hide": "Sembunyikan ringkasan",
+	"summary.disclaimer": "Ditulis oleh AI. Periksa detail penting di pesan.",
+	"summary.failed": "Tidak dapat meringkas percakapan ini. Coba lagi.",
+	"summary.rateLimited": "Terlalu banyak ringkasan saat ini. Coba lagi dalam satu menit."
 }

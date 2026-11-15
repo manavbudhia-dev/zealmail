@@ -2456,5 +2456,12 @@
 	"account.openApps": "অ্যাপ মেনু খুলুন",
 	"account.signOutAccountConfirm": "{name} ({email}) থেকে সাইন আউট করবেন? এই অ্যাকাউন্ট ব্যবহার করতে আবার সাইন ইন করতে হবে।",
 	"invite.acceptedLabel": "গৃহীত",
-	"invite.declinedLabel": "প্রত্যাখ্যাত"
+	"invite.declinedLabel": "প্রত্যাখ্যাত",
+	"summary.button": "কথোপকথনের সারাংশ",
+	"summary.loading": "সারাংশ তৈরি হচ্ছে…",
+	"summary.title": "সারাংশ",
+	"summary.hide": "সারাংশ লুকান",
+	"summary.disclaimer": "AI দ্বারা লেখা। গুরুত্বপূর্ণ বিবরণ বার্তাগুলোতে যাচাই করুন।",
+	"summary.failed": "এই কথোপকথনের সারাংশ তৈরি করা যায়নি। আবার চেষ্টা করুন।",
+	"summary.rateLimited": "এখন অনেক বেশি সারাংশের অনুরোধ। এক মিনিট পরে আবার চেষ্টা করুন।"
 }

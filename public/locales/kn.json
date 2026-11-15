@@ -2456,5 +2456,12 @@
 	"account.openApps": "ಆ್ಯಪ್‌ಗಳ ಮೆನು ತೆರೆಯಿರಿ",
 	"account.signOutAccountConfirm": "{name} ({email}) ನಿಂದ ಸೈನ್ ಔಟ್ ಮಾಡಬೇಕೆ? ಈ ಖಾತೆಯನ್ನು ಬಳಸಲು ಮತ್ತೆ ಸೈನ್ ಇನ್ ಮಾಡಬೇಕಾಗುತ್ತದೆ.",
 	"invite.acceptedLabel": "ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
-	"invite.declinedLabel": "ನಿರಾಕರಿಸಲಾಗಿದೆ"
+	"invite.declinedLabel": "ನಿರಾಕರಿಸಲಾಗಿದೆ",
+	"summary.button": "ಸಂಭಾಷಣೆಯ ಸಾರಾಂಶ",
+	"summary.loading": "ಸಾರಾಂಶ ರಚಿಸಲಾಗುತ್ತಿದೆ…",
+	"summary.title": "ಸಾರಾಂಶ",
+	"summary.hide": "ಸಾರಾಂಶ ಮರೆಮಾಡಿ",
+	"summary.disclaimer": "AI ಬರೆದಿದೆ. ಮುಖ್ಯ ವಿವರಗಳನ್ನು ಸಂದೇಶಗಳಲ್ಲಿ ಪರಿಶೀಲಿಸಿ.",
+	"summary.failed": "ಈ ಸಂಭಾಷಣೆಯ ಸಾರಾಂಶ ರಚಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+	"summary.rateLimited": "ಈಗ ತುಂಬಾ ಸಾರಾಂಶ ವಿನಂತಿಗಳಿವೆ. ಒಂದು ನಿಮಿಷದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
 }

@@ -2516,5 +2516,12 @@
 	"account.openApps": "فتح قائمة التطبيقات",
 	"account.signOutAccountConfirm": "هل تريد تسجيل خروج {name} ({email})؟ ستحتاج إلى تسجيل الدخول مرة أخرى لاستخدام هذا الحساب.",
 	"invite.acceptedLabel": "مقبول",
-	"invite.declinedLabel": "مرفوض"
+	"invite.declinedLabel": "مرفوض",
+	"summary.button": "تلخيص المحادثة",
+	"summary.loading": "جارٍ التلخيص…",
+	"summary.title": "الملخص",
+	"summary.hide": "إخفاء الملخص",
+	"summary.disclaimer": "كتبه الذكاء الاصطناعي. تحقق من التفاصيل المهمة في الرسائل.",
+	"summary.failed": "تعذّر تلخيص هذه المحادثة. حاول مرة أخرى.",
+	"summary.rateLimited": "طلبات تلخيص كثيرة الآن. حاول مرة أخرى بعد دقيقة."
 }

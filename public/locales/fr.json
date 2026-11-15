@@ -2471,5 +2471,12 @@
 	"account.openApps": "Ouvrir le menu des applications",
 	"account.signOutAccountConfirm": "Déconnecter {name} ({email}) ? Vous devrez vous reconnecter pour utiliser ce compte.",
 	"invite.acceptedLabel": "Acceptée",
-	"invite.declinedLabel": "Refusée"
+	"invite.declinedLabel": "Refusée",
+	"summary.button": "Résumer la conversation",
+	"summary.loading": "Résumé en cours…",
+	"summary.title": "Résumé",
+	"summary.hide": "Masquer le résumé",
+	"summary.disclaimer": "Rédigé par l'IA. Vérifiez les détails importants dans les messages.",
+	"summary.failed": "Impossible de résumer cette conversation. Réessayez.",
+	"summary.rateLimited": "Trop de résumés en ce moment. Réessayez dans une minute."
 }

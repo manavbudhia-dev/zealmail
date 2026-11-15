@@ -2456,5 +2456,12 @@
 	"account.openApps": "ایپس مینو کھولیں",
 	"account.signOutAccountConfirm": "{name} ({email}) سے سائن آؤٹ کریں؟ اس اکاؤنٹ کو استعمال کرنے کے لیے دوبارہ سائن ان کرنا ہوگا۔",
 	"invite.acceptedLabel": "قبول کیا",
-	"invite.declinedLabel": "مسترد کیا"
+	"invite.declinedLabel": "مسترد کیا",
+	"summary.button": "گفتگو کا خلاصہ",
+	"summary.loading": "خلاصہ بنایا جا رہا ہے…",
+	"summary.title": "خلاصہ",
+	"summary.hide": "خلاصہ چھپائیں",
+	"summary.disclaimer": "AI نے لکھا ہے۔ اہم تفصیلات پیغامات میں چیک کریں۔",
+	"summary.failed": "اس گفتگو کا خلاصہ نہیں بن سکا۔ دوبارہ کوشش کریں۔",
+	"summary.rateLimited": "اس وقت بہت زیادہ خلاصے کی درخواستیں ہیں۔ ایک منٹ بعد دوبارہ کوشش کریں۔"
 }

@@ -2438,5 +2438,12 @@
 	"account.openApps": "打开应用菜单",
 	"account.signOutAccountConfirm": "要退出 {name}（{email}）吗？你需要重新登录才能使用此账户。",
 	"invite.acceptedLabel": "已接受",
-	"invite.declinedLabel": "已拒绝"
+	"invite.declinedLabel": "已拒绝",
+	"summary.button": "总结对话",
+	"summary.loading": "正在总结…",
+	"summary.title": "摘要",
+	"summary.hide": "隐藏摘要",
+	"summary.disclaimer": "由 AI 撰写。请在邮件中核对重要细节。",
+	"summary.failed": "无法总结此对话。请重试。",
+	"summary.rateLimited": "当前总结请求过多。请一分钟后重试。"
 }

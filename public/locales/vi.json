@@ -2438,5 +2438,12 @@
 	"account.openApps": "Mở menu ứng dụng",
 	"account.signOutAccountConfirm": "Đăng xuất {name} ({email})? Bạn sẽ cần đăng nhập lại để dùng tài khoản này.",
 	"invite.acceptedLabel": "Đã chấp nhận",
-	"invite.declinedLabel": "Đã từ chối"
+	"invite.declinedLabel": "Đã từ chối",
+	"summary.button": "Tóm tắt cuộc trò chuyện",
+	"summary.loading": "Đang tóm tắt…",
+	"summary.title": "Tóm tắt",
+	"summary.hide": "Ẩn tóm tắt",
+	"summary.disclaimer": "Do AI viết. Hãy kiểm tra các chi tiết quan trọng trong thư.",
+	"summary.failed": "Không thể tóm tắt cuộc trò chuyện này. Hãy thử lại.",
+	"summary.rateLimited": "Hiện có quá nhiều yêu cầu tóm tắt. Hãy thử lại sau một phút."
 }

@@ -2456,5 +2456,12 @@
 	"account.openApps": "ऐप्स मेनू खोलें",
 	"account.signOutAccountConfirm": "{name} ({email}) से साइन आउट करें? इस खाते का उपयोग करने के लिए आपको फिर से साइन इन करना होगा।",
 	"invite.acceptedLabel": "स्वीकृत",
-	"invite.declinedLabel": "अस्वीकृत"
+	"invite.declinedLabel": "अस्वीकृत",
+	"summary.button": "बातचीत का सारांश",
+	"summary.loading": "सारांश बनाया जा रहा है…",
+	"summary.title": "सारांश",
+	"summary.hide": "सारांश छिपाएँ",
+	"summary.disclaimer": "AI द्वारा लिखा गया। ज़रूरी जानकारी संदेशों में जाँचें।",
+	"summary.failed": "इस बातचीत का सारांश नहीं बन सका। फिर से कोशिश करें।",
+	"summary.rateLimited": "अभी बहुत सारे सारांश अनुरोध हैं। एक मिनट बाद फिर कोशिश करें।"
 }

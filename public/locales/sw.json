@@ -2456,5 +2456,12 @@
 	"account.openApps": "Fungua menyu ya programu",
 	"account.signOutAccountConfirm": "Ondoka kwenye {name} ({email})? Utahitaji kuingia tena ili kutumia akaunti hii.",
 	"invite.acceptedLabel": "Imekubaliwa",
-	"invite.declinedLabel": "Imekataliwa"
+	"invite.declinedLabel": "Imekataliwa",
+	"summary.button": "Fupisha mazungumzo",
+	"summary.loading": "Inafupisha…",
+	"summary.title": "Muhtasari",
+	"summary.hide": "Ficha muhtasari",
+	"summary.disclaimer": "Imeandikwa na AI. Hakiki maelezo muhimu kwenye ujumbe.",
+	"summary.failed": "Imeshindwa kufupisha mazungumzo haya. Jaribu tena.",
+	"summary.rateLimited": "Maombi mengi ya muhtasari kwa sasa. Jaribu tena baada ya dakika moja."
 }

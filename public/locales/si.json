@@ -2456,5 +2456,12 @@
 	"account.openApps": "යෙදුම් මෙනුව විවෘත කරන්න",
 	"account.signOutAccountConfirm": "{name} ({email}) වෙතින් වරනවාද? මෙම ගිණුම භාවිත කිරීමට නැවත පිවිසීමට සිදුවේ.",
 	"invite.acceptedLabel": "පිළිගත්තා",
-	"invite.declinedLabel": "ප්‍රතික්ෂේප කළා"
+	"invite.declinedLabel": "ප්‍රතික්ෂේප කළා",
+	"summary.button": "සංවාදය සාරාංශ කරන්න",
+	"summary.loading": "සාරාංශ කරමින්…",
+	"summary.title": "සාරාංශය",
+	"summary.hide": "සාරාංශය සඟවන්න",
+	"summary.disclaimer": "AI විසින් ලියන ලදී. වැදගත් විස්තර පණිවිඩවල පරීක්ෂා කරන්න.",
+	"summary.failed": "මෙම සංවාදය සාරාංශ කළ නොහැකි විය. නැවත උත්සාහ කරන්න.",
+	"summary.rateLimited": "දැන් සාරාංශ ඉල්ලීම් වැඩියි. මිනිත්තුවකින් නැවත උත්සාහ කරන්න."
 }

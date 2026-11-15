@@ -2452,5 +2452,12 @@
 	"account.openApps": "Buka menu apl",
 	"account.signOutAccountConfirm": "Log keluar {name} ({email})? Anda perlu log masuk semula untuk menggunakan akaun ini.",
 	"invite.acceptedLabel": "Diterima",
-	"invite.declinedLabel": "Ditolak"
+	"invite.declinedLabel": "Ditolak",
+	"summary.button": "Ringkaskan perbualan",
+	"summary.loading": "Meringkaskan…",
+	"summary.title": "Ringkasan",
+	"summary.hide": "Sembunyikan ringkasan",
+	"summary.disclaimer": "Ditulis oleh AI. Semak butiran penting dalam mesej.",
+	"summary.failed": "Tidak dapat meringkaskan perbualan ini. Cuba lagi.",
+	"summary.rateLimited": "Terlalu banyak ringkasan sekarang. Cuba lagi dalam seminit."
 }

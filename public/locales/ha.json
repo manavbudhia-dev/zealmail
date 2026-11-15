@@ -2456,5 +2456,12 @@
 	"account.openApps": "Buɗe menu na manhajoji",
 	"account.signOutAccountConfirm": "Fita daga {name} ({email})? Za ka buƙaci sake shiga don amfani da wannan asusun.",
 	"invite.acceptedLabel": "An karɓa",
-	"invite.declinedLabel": "An ƙi"
+	"invite.declinedLabel": "An ƙi",
+	"summary.button": "Taƙaita tattaunawa",
+	"summary.loading": "Ana taƙaitawa…",
+	"summary.title": "Taƙaitawa",
+	"summary.hide": "Ɓoye taƙaitawa",
+	"summary.disclaimer": "AI ce ta rubuta. Duba muhimman bayanai a cikin saƙonnin.",
+	"summary.failed": "Ba a iya taƙaita wannan tattaunawar ba. Sake gwadawa.",
+	"summary.rateLimited": "Taƙaitawa sun yi yawa yanzu. Sake gwadawa bayan minti ɗaya."
 }

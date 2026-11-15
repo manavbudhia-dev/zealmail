@@ -2456,5 +2456,12 @@
 	"actions.unsubscribeDeleteAll": "Unsubscribe & delete all",
 	"actions.unsubscribeDeleteConfirm": "Move {count} past emails from this sender to Trash?",
 	"actions.unsubscribeTrashDone": "Unsubscribed and moved {count} emails to Trash",
-	"attachment.downloadAllFlagged": "Some attachments are flagged as potentially dangerous. Download the archive anyway?"
+	"attachment.downloadAllFlagged": "Some attachments are flagged as potentially dangerous. Download the archive anyway?",
+	"summary.button": "Summarize conversation",
+	"summary.loading": "Summarizing…",
+	"summary.title": "Summary",
+	"summary.hide": "Hide summary",
+	"summary.disclaimer": "Written by AI. Check important details in the messages.",
+	"summary.failed": "Couldn't summarize this conversation. Try again.",
+	"summary.rateLimited": "Too many summaries right now. Try again in a minute."
 }

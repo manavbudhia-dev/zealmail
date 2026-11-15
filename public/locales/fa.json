@@ -2456,5 +2456,12 @@
 	"account.openApps": "باز کردن منوی برنامه‌ها",
 	"account.signOutAccountConfirm": "از {name} ({email}) خارج می‌شوید؟ برای استفاده از این حساب باید دوباره وارد شوید.",
 	"invite.acceptedLabel": "پذیرفته شد",
-	"invite.declinedLabel": "رد شد"
+	"invite.declinedLabel": "رد شد",
+	"summary.button": "خلاصهٔ گفتگو",
+	"summary.loading": "در حال خلاصه‌سازی…",
+	"summary.title": "خلاصه",
+	"summary.hide": "پنهان کردن خلاصه",
+	"summary.disclaimer": "نوشته‌شده با هوش مصنوعی. جزئیات مهم را در پیام‌ها بررسی کنید.",
+	"summary.failed": "خلاصه‌سازی این گفتگو ممکن نشد. دوباره تلاش کنید.",
+	"summary.rateLimited": "درخواست‌های خلاصه در حال حاضر زیاد است. یک دقیقه دیگر تلاش کنید."
 }

@@ -2456,5 +2456,12 @@
 	"account.openApps": "యాప్‌ల మెనూ తెరవండి",
 	"account.signOutAccountConfirm": "{name} ({email}) నుండి సైన్ అవుట్ చేయాలా? ఈ ఖాతాను ఉపయోగించడానికి మళ్లీ సైన్ ఇన్ చేయాలి.",
 	"invite.acceptedLabel": "ఆమోదించబడింది",
-	"invite.declinedLabel": "తిరస్కరించబడింది"
+	"invite.declinedLabel": "తిరస్కరించబడింది",
+	"summary.button": "సంభాషణను సంగ్రహించండి",
+	"summary.loading": "సంగ్రహిస్తోంది…",
+	"summary.title": "సారాంశం",
+	"summary.hide": "సారాంశాన్ని దాచండి",
+	"summary.disclaimer": "AI రాసింది. ముఖ్యమైన వివరాలను సందేశాల్లో తనిఖీ చేయండి.",
+	"summary.failed": "ఈ సంభాషణను సంగ్రహించలేకపోయాం. మళ్లీ ప్రయత్నించండి.",
+	"summary.rateLimited": "ప్రస్తుతం చాలా సారాంశ అభ్యర్థనలు ఉన్నాయి. ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి."
 }

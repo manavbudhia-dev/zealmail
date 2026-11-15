@@ -2456,5 +2456,12 @@
 	"account.openApps": "App-Menü öffnen",
 	"account.signOutAccountConfirm": "{name} ({email}) abmelden? Du musst dich erneut anmelden, um dieses Konto zu verwenden.",
 	"invite.acceptedLabel": "Zugesagt",
-	"invite.declinedLabel": "Abgesagt"
+	"invite.declinedLabel": "Abgesagt",
+	"summary.button": "Unterhaltung zusammenfassen",
+	"summary.loading": "Wird zusammengefasst…",
+	"summary.title": "Zusammenfassung",
+	"summary.hide": "Zusammenfassung ausblenden",
+	"summary.disclaimer": "Von KI erstellt. Prüfe wichtige Details in den Nachrichten.",
+	"summary.failed": "Die Unterhaltung konnte nicht zusammengefasst werden. Versuche es erneut.",
+	"summary.rateLimited": "Gerade zu viele Zusammenfassungen. Versuche es in einer Minute erneut."
 }

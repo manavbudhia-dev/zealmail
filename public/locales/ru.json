@@ -2486,5 +2486,12 @@
 	"account.openApps": "Открыть меню приложений",
 	"account.signOutAccountConfirm": "Выйти из {name} ({email})? Чтобы пользоваться этим аккаунтом, нужно будет войти снова.",
 	"invite.acceptedLabel": "Принято",
-	"invite.declinedLabel": "Отклонено"
+	"invite.declinedLabel": "Отклонено",
+	"summary.button": "Кратко пересказать переписку",
+	"summary.loading": "Составляем краткое содержание…",
+	"summary.title": "Краткое содержание",
+	"summary.hide": "Скрыть краткое содержание",
+	"summary.disclaimer": "Написано ИИ. Проверяйте важные детали в самих письмах.",
+	"summary.failed": "Не удалось кратко пересказать переписку. Попробуйте ещё раз.",
+	"summary.rateLimited": "Сейчас слишком много запросов. Попробуйте через минуту."
 }

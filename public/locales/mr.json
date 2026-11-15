@@ -2456,5 +2456,12 @@
 	"account.openApps": "ॲप्स मेनू उघडा",
 	"account.signOutAccountConfirm": "{name} ({email}) मधून साइन आउट करायचे? हे खाते वापरण्यासाठी पुन्हा साइन इन करावे लागेल.",
 	"invite.acceptedLabel": "स्वीकारले",
-	"invite.declinedLabel": "नाकारले"
+	"invite.declinedLabel": "नाकारले",
+	"summary.button": "संभाषणाचा सारांश",
+	"summary.loading": "सारांश तयार होत आहे…",
+	"summary.title": "सारांश",
+	"summary.hide": "सारांश लपवा",
+	"summary.disclaimer": "AI ने लिहिले. महत्त्वाचे तपशील संदेशांमध्ये तपासा.",
+	"summary.failed": "या संभाषणाचा सारांश तयार करता आला नाही. पुन्हा प्रयत्न करा.",
+	"summary.rateLimited": "सध्या खूप सारांश विनंत्या आहेत. एका मिनिटाने पुन्हा प्रयत्न करा."
 }

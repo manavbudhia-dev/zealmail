@@ -2438,5 +2438,12 @@
 	"account.openApps": "アプリメニューを開く",
 	"account.signOutAccountConfirm": "{name}（{email}）からサインアウトしますか？このアカウントを使うには再度サインインが必要です。",
 	"invite.acceptedLabel": "承諾済み",
-	"invite.declinedLabel": "辞退済み"
+	"invite.declinedLabel": "辞退済み",
+	"summary.button": "会話を要約",
+	"summary.loading": "要約しています…",
+	"summary.title": "要約",
+	"summary.hide": "要約を隠す",
+	"summary.disclaimer": "AI が作成しました。重要な内容はメッセージで確認してください。",
+	"summary.failed": "この会話を要約できませんでした。もう一度お試しください。",
+	"summary.rateLimited": "現在要約のリクエストが多すぎます。1 分後にもう一度お試しください。"
 }

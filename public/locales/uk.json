@@ -2486,5 +2486,12 @@
 	"account.openApps": "Відкрити меню застосунків",
 	"account.signOutAccountConfirm": "Вийти з {name} ({email})? Щоб користуватися цим обліковим записом, доведеться увійти знову.",
 	"invite.acceptedLabel": "Прийнято",
-	"invite.declinedLabel": "Відхилено"
+	"invite.declinedLabel": "Відхилено",
+	"summary.button": "Підсумувати листування",
+	"summary.loading": "Підсумовуємо…",
+	"summary.title": "Підсумок",
+	"summary.hide": "Сховати підсумок",
+	"summary.disclaimer": "Написано ШІ. Перевіряйте важливі деталі в самих листах.",
+	"summary.failed": "Не вдалося підсумувати листування. Спробуйте ще раз.",
+	"summary.rateLimited": "Забагато запитів зараз. Спробуйте за хвилину."
 }

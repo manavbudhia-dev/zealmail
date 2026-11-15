@@ -2456,5 +2456,12 @@
 	"account.openApps": "ਐਪਾਂ ਦਾ ਮੀਨੂ ਖੋਲ੍ਹੋ",
 	"account.signOutAccountConfirm": "{name} ({email}) ਤੋਂ ਸਾਈਨ ਆਉਟ ਕਰਨਾ ਹੈ? ਇਹ ਖਾਤਾ ਵਰਤਣ ਲਈ ਮੁੜ ਸਾਈਨ ਇਨ ਕਰਨਾ ਪਵੇਗਾ।",
 	"invite.acceptedLabel": "ਸਵੀਕਾਰ ਕੀਤਾ",
-	"invite.declinedLabel": "ਅਸਵੀਕਾਰ ਕੀਤਾ"
+	"invite.declinedLabel": "ਅਸਵੀਕਾਰ ਕੀਤਾ",
+	"summary.button": "ਗੱਲਬਾਤ ਦਾ ਸਾਰ",
+	"summary.loading": "ਸਾਰ ਬਣਾਇਆ ਜਾ ਰਿਹਾ ਹੈ…",
+	"summary.title": "ਸਾਰ",
+	"summary.hide": "ਸਾਰ ਲੁਕਾਓ",
+	"summary.disclaimer": "AI ਵੱਲੋਂ ਲਿਖਿਆ। ਜ਼ਰੂਰੀ ਵੇਰਵੇ ਸੁਨੇਹਿਆਂ ਵਿੱਚ ਜਾਂਚੋ।",
+	"summary.failed": "ਇਸ ਗੱਲਬਾਤ ਦਾ ਸਾਰ ਨਹੀਂ ਬਣ ਸਕਿਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+	"summary.rateLimited": "ਇਸ ਵੇਲੇ ਬਹੁਤ ਸਾਰੀਆਂ ਸਾਰ ਬੇਨਤੀਆਂ ਹਨ। ਇੱਕ ਮਿੰਟ ਬਾਅਦ ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
 }

@@ -2471,5 +2471,12 @@
 	"account.openApps": "Abrir menú de aplicaciones",
 	"account.signOutAccountConfirm": "¿Cerrar la sesión de {name} ({email})? Tendrás que volver a iniciar sesión para usar esta cuenta.",
 	"invite.acceptedLabel": "Aceptada",
-	"invite.declinedLabel": "Rechazada"
+	"invite.declinedLabel": "Rechazada",
+	"summary.button": "Resumir conversación",
+	"summary.loading": "Resumiendo…",
+	"summary.title": "Resumen",
+	"summary.hide": "Ocultar resumen",
+	"summary.disclaimer": "Escrito por IA. Comprueba los detalles importantes en los mensajes.",
+	"summary.failed": "No se pudo resumir esta conversación. Inténtalo de nuevo.",
+	"summary.rateLimited": "Demasiados resúmenes ahora mismo. Inténtalo de nuevo en un minuto."
 }

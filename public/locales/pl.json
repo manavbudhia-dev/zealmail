@@ -2486,5 +2486,12 @@
 	"account.openApps": "Otwórz menu aplikacji",
 	"account.signOutAccountConfirm": "Wylogować {name} ({email})? Aby korzystać z tego konta, trzeba będzie zalogować się ponownie.",
 	"invite.acceptedLabel": "Zaakceptowano",
-	"invite.declinedLabel": "Odrzucono"
+	"invite.declinedLabel": "Odrzucono",
+	"summary.button": "Podsumuj rozmowę",
+	"summary.loading": "Podsumowywanie…",
+	"summary.title": "Podsumowanie",
+	"summary.hide": "Ukryj podsumowanie",
+	"summary.disclaimer": "Napisane przez AI. Sprawdź ważne szczegóły w wiadomościach.",
+	"summary.failed": "Nie udało się podsumować tej rozmowy. Spróbuj ponownie.",
+	"summary.rateLimited": "Zbyt wiele podsumowań naraz. Spróbuj ponownie za minutę."
 }

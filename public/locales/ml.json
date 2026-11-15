@@ -2456,5 +2456,12 @@
 	"account.openApps": "ആപ്പുകളുടെ മെനു തുറക്കുക",
 	"account.signOutAccountConfirm": "{name} ({email}) സൈൻ ഔട്ട് ചെയ്യണോ? ഈ അക്കൗണ്ട് ഉപയോഗിക്കാൻ വീണ്ടും സൈൻ ഇൻ ചെയ്യേണ്ടിവരും.",
 	"invite.acceptedLabel": "സ്വീകരിച്ചു",
-	"invite.declinedLabel": "നിരസിച്ചു"
+	"invite.declinedLabel": "നിരസിച്ചു",
+	"summary.button": "സംഭാഷണം ചുരുക്കുക",
+	"summary.loading": "ചുരുക്കുന്നു…",
+	"summary.title": "സംഗ്രഹം",
+	"summary.hide": "സംഗ്രഹം മറയ്ക്കുക",
+	"summary.disclaimer": "AI എഴുതിയത്. പ്രധാന വിവരങ്ങൾ സന്ദേശങ്ങളിൽ പരിശോധിക്കുക.",
+	"summary.failed": "ഈ സംഭാഷണം ചുരുക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.",
+	"summary.rateLimited": "ഇപ്പോൾ വളരെയധികം സംഗ്രഹ അഭ്യർത്ഥനകളുണ്ട്. ഒരു മിനിറ്റിന് ശേഷം വീണ്ടും ശ്രമിക്കുക."
 }

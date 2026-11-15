@@ -2456,5 +2456,12 @@
 	"account.openApps": "ஆப்ஸ் மெனுவைத் திற",
 	"account.signOutAccountConfirm": "{name} ({email}) இலிருந்து வெளியேறவா? இந்தக் கணக்கைப் பயன்படுத்த மீண்டும் உள்நுழைய வேண்டும்.",
 	"invite.acceptedLabel": "ஏற்கப்பட்டது",
-	"invite.declinedLabel": "நிராகரிக்கப்பட்டது"
+	"invite.declinedLabel": "நிராகரிக்கப்பட்டது",
+	"summary.button": "உரையாடலைச் சுருக்கு",
+	"summary.loading": "சுருக்குகிறது…",
+	"summary.title": "சுருக்கம்",
+	"summary.hide": "சுருக்கத்தை மறை",
+	"summary.disclaimer": "AI எழுதியது. முக்கிய விவரங்களை மின்னஞ்சல்களில் சரிபார்க்கவும்.",
+	"summary.failed": "இந்த உரையாடலைச் சுருக்க முடியவில்லை. மீண்டும் முயலவும்.",
+	"summary.rateLimited": "இப்போது அதிகமான சுருக்கக் கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலவும்."
 }

@@ -2456,5 +2456,12 @@
 	"account.openApps": "ઍપ્સ મેનૂ ખોલો",
 	"account.signOutAccountConfirm": "{name} ({email}) માંથી સાઇન આઉટ કરવું છે? આ એકાઉન્ટ વાપરવા માટે ફરીથી સાઇન ઇન કરવું પડશે.",
 	"invite.acceptedLabel": "સ્વીકાર્યું",
-	"invite.declinedLabel": "નકાર્યું"
+	"invite.declinedLabel": "નકાર્યું",
+	"summary.button": "વાતચીતનો સારાંશ",
+	"summary.loading": "સારાંશ બનાવી રહ્યું છે…",
+	"summary.title": "સારાંશ",
+	"summary.hide": "સારાંશ છુપાવો",
+	"summary.disclaimer": "AI દ્વારા લખાયેલ. મહત્વની વિગતો સંદેશાઓમાં તપાસો.",
+	"summary.failed": "આ વાતચીતનો સારાંશ બનાવી શકાયો નહીં. ફરી પ્રયાસ કરો.",
+	"summary.rateLimited": "અત્યારે ઘણા બધા સારાંશ વિનંતીઓ છે. એક મિનિટ પછી ફરી પ્રયાસ કરો."
 }

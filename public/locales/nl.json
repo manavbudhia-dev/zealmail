@@ -2456,5 +2456,12 @@
 	"account.openApps": "Appmenu openen",
 	"account.signOutAccountConfirm": "{name} ({email}) afmelden? Je moet opnieuw inloggen om dit account te gebruiken.",
 	"invite.acceptedLabel": "Geaccepteerd",
-	"invite.declinedLabel": "Afgewezen"
+	"invite.declinedLabel": "Afgewezen",
+	"summary.button": "Gesprek samenvatten",
+	"summary.loading": "Samenvatten…",
+	"summary.title": "Samenvatting",
+	"summary.hide": "Samenvatting verbergen",
+	"summary.disclaimer": "Geschreven door AI. Controleer belangrijke details in de berichten.",
+	"summary.failed": "Dit gesprek kon niet worden samengevat. Probeer het opnieuw.",
+	"summary.rateLimited": "Te veel samenvattingen op dit moment. Probeer het over een minuut opnieuw."
 }

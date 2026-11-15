@@ -2452,5 +2452,12 @@
 	"account.openApps": "เปิดเมนูแอป",
 	"account.signOutAccountConfirm": "ออกจากระบบ {name} ({email}) ใช่ไหม คุณต้องลงชื่อเข้าใช้อีกครั้งเพื่อใช้บัญชีนี้",
 	"invite.acceptedLabel": "ตอบรับแล้ว",
-	"invite.declinedLabel": "ปฏิเสธแล้ว"
+	"invite.declinedLabel": "ปฏิเสธแล้ว",
+	"summary.button": "สรุปบทสนทนา",
+	"summary.loading": "กำลังสรุป…",
+	"summary.title": "สรุป",
+	"summary.hide": "ซ่อนสรุป",
+	"summary.disclaimer": "เขียนโดย AI โปรดตรวจสอบรายละเอียดสำคัญในข้อความ",
+	"summary.failed": "สรุปบทสนทนานี้ไม่ได้ ลองอีกครั้ง",
+	"summary.rateLimited": "มีคำขอสรุปมากเกินไปในขณะนี้ ลองอีกครั้งในอีกหนึ่งนาที"
 }

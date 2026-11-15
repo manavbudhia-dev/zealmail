@@ -2452,5 +2452,12 @@
 	"account.openApps": "앱 메뉴 열기",
 	"account.signOutAccountConfirm": "{name}({email})에서 로그아웃할까요? 이 계정을 사용하려면 다시 로그인해야 합니다.",
 	"invite.acceptedLabel": "수락함",
-	"invite.declinedLabel": "거절함"
+	"invite.declinedLabel": "거절함",
+	"summary.button": "대화 요약",
+	"summary.loading": "요약하는 중…",
+	"summary.title": "요약",
+	"summary.hide": "요약 숨기기",
+	"summary.disclaimer": "AI가 작성했습니다. 중요한 내용은 메시지에서 확인하세요.",
+	"summary.failed": "이 대화를 요약하지 못했습니다. 다시 시도하세요.",
+	"summary.rateLimited": "지금은 요약 요청이 너무 많습니다. 1분 후에 다시 시도하세요."
 }

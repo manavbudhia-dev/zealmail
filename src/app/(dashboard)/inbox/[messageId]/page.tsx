@@ -23,6 +23,8 @@ import { PreviousMessage } from "@/components/previous-message";
 import { ConversationThread } from "@/components/messages/conversation-thread";
 import { getConversationSender } from "@/components/messages/conversation-thread-utils";
 import { ConversationNotes } from "@/components/messages/conversation-notes";
+import { ThreadSummary } from "@/components/messages/thread-summary";
+import { useAssistantAvailability } from "@/app/(dashboard)/use-assistant-availability";
 import { ConversationNotesProvider } from "@/components/messages/conversation-notes-context";
 import { MessageDetailNavigation } from "@/components/messages/message-detail-navigation";
 import { MessageReadingHeaderButton } from "@/components/messages/message-reading-header-button";
@@ -97,6 +99,7 @@ function MessageDetailContent({ messageId }: { messageId: string }) {
   const { visible: messageListVisible } = useMessageListVisibility();
   usePageLoading(loading, true);
   const thread = useMessageThread(messageId, data?.message?.threadId);
+  const assistantEnabled = useAssistantAvailability();
   const assistantVisible = useAssistantOpen();
   const isAnyPanelVisible = messageListVisible || assistantVisible;
   const { scrollRef, scrolled, handleScroll } = useMessageContentScroll(messageId, loading);
@@ -314,6 +317,9 @@ function MessageDetailContent({ messageId }: { messageId: string }) {
       <ConversationNotes
         className={clsx("sm:pl-[78px] px-4 sm:pr-6")}
       />
+      {assistantEnabled === true && message.status !== "spam" && thread.messages.length >= 2 && (
+        <ThreadSummary key={message.id} messageId={message.id} className={clsx("sm:ml-[78px] mx-4 sm:mr-6")} />
+      )}
       {/* <div className="px-6">
         <div className="mx-auto w-full max-w-[640px]">
           <SpamScoreDetails

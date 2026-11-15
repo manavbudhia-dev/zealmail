@@ -2471,5 +2471,12 @@
 	"account.openApps": "Apri il menu delle app",
 	"account.signOutAccountConfirm": "Disconnettere {name} ({email})? Dovrai accedere di nuovo per usare questo account.",
 	"invite.acceptedLabel": "Accettato",
-	"invite.declinedLabel": "Rifiutato"
+	"invite.declinedLabel": "Rifiutato",
+	"summary.button": "Riassumi conversazione",
+	"summary.loading": "Riepilogo in corso…",
+	"summary.title": "Riepilogo",
+	"summary.hide": "Nascondi riepilogo",
+	"summary.disclaimer": "Scritto dall'IA. Verifica i dettagli importanti nei messaggi.",
+	"summary.failed": "Impossibile riassumere questa conversazione. Riprova.",
+	"summary.rateLimited": "Troppi riepiloghi in questo momento. Riprova tra un minuto."
 }
