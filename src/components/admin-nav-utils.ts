@@ -5,6 +5,7 @@ import {
 	Globe2,
 	Home,
 	KeyRound,
+	LockKeyhole,
 	Mail,
 	Palette,
 	Route,
@@ -48,6 +49,7 @@ export const adminNavSections: { id?: string; labelKey?: TranslationKey; links: 
 		links: [
 			{ href: "/api-keys", labelKey: "admin.nav.apiKeys", icon: KeyRound, permission: "primary" },
 			{ href: "/general", labelKey: "admin.nav.general", icon: Settings, permission: "primary" },
+			{ href: "/security", labelKey: "admin.nav.security", icon: LockKeyhole, permission: "primary" },
 			{ href: "/agent", labelKey: "admin.nav.agent", icon: Bot, permission: "primary" },
 			{ href: "/accounts", labelKey: "admin.nav.accounts", icon: Users },
 			{ href: "/activity", labelKey: "admin.nav.activity", icon: Activity, permission: "primary" },

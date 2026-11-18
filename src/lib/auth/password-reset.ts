@@ -10,6 +10,7 @@ import { createAuditLog } from "@/lib/mailboxes/audit";
 import { getClientIp } from "@/lib/auth/client-ip";
 import { buildPasswordResetEmail } from "@/lib/auth/password-reset-utils";
 import type { Translator } from "@/lib/i18n/utils";
+import { getPasswordPolicyError } from "@/lib/security/policy";
 
 const TOKEN_MINUTES = 30;
 
@@ -48,6 +49,9 @@ export async function completePasswordReset(
 	newPassword: string,
 	request: Request,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+	// Checked before the token is consumed, so a rejected password leaves the link usable.
+	const policyError = await getPasswordPolicyError(env, newPassword);
+	if (policyError) return { ok: false, error: policyError };
 	const db = getDb(env);
 	const [row] = await db
 		.select({

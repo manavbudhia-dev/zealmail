@@ -6,11 +6,15 @@ import { fetchSessionInfo, peekSessionInfo } from "@/hooks/use-current-user";
 import type { AuthGuardProps } from "./auth-guard-types";
 import { LoadingTransition } from "@/components/loading-transition";
 import { saveUserTimeZonePreference } from "@/lib/time/client";
+import { TwoStepReminder } from "./two-step-reminder";
+import { isTwoStepSetupPath, TWO_STEP_SETUP_PATH } from "./two-step-reminder-utils";
+import type { TwoStepStatus } from "@/lib/security/policy-types";
 
 export function AuthGuard({ children, mode = "protected", requireMailbox, requireRole, requirePrimary, requireFeature, allowAuthenticated }: AuthGuardProps) {
 	const pathname = usePathname();
 	const router = useRouter();
 	const [authorized, setAuthorized] = useState(mode === "public");
+	const [twoStep, setTwoStep] = useState<TwoStepStatus | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -19,7 +23,8 @@ export function AuthGuard({ children, mode = "protected", requireMailbox, requir
 			try {
 				// Login pages and onboarding change the answer, so only a finished setup is reused across navigations.
 				const cached = mode === "protected" ? peekSessionInfo() : null;
-				const response = cached && cached.isSetup !== false && cached.hasMailboxes !== false
+				// An overdue answer is always refreshed, so finishing 2-step setup lifts the restriction at once.
+				const response = cached && cached.isSetup !== false && cached.hasMailboxes !== false && !cached.twoStep?.overdue
 					? cached
 					: await fetchSessionInfo({ fresh: true });
 				if (cancelled) return;
@@ -67,6 +72,13 @@ export function AuthGuard({ children, mode = "protected", requireMailbox, requir
 					return;
 				}
 
+				// Admin → Security: past the grace period, only the page that sets it up stays usable.
+				setTwoStep(data.twoStep ?? null);
+				if (data.twoStep?.overdue && !isTwoStepSetupPath(pathname)) {
+					router.replace(`${TWO_STEP_SETUP_PATH}?required=2sv`);
+					return;
+				}
+
 				setAuthorized(true);
 			} catch {
 				if (!cancelled) setAuthorized(true);
@@ -89,5 +101,8 @@ export function AuthGuard({ children, mode = "protected", requireMailbox, requir
 	}, []);
 
 	if (mode === "public") return <>{children}</>;
-	return <LoadingTransition ready={authorized}>{children}</LoadingTransition>;
+	return <>
+		<LoadingTransition ready={authorized}>{children}</LoadingTransition>
+		{authorized && twoStep && <TwoStepReminder status={twoStep} pathname={pathname} />}
+	</>;
 }

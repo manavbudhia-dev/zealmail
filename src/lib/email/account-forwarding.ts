@@ -4,6 +4,7 @@ import { users } from "@/db/schema";
 import { getEmailAddress } from "@/lib/email/address";
 import { resolveInboundAddress } from "@/lib/email/routing";
 import { getLicenseEntitlements } from "@/lib/licenses/service";
+import { isForwardingAllowed } from "@/lib/security/policy";
 
 export const MAILFLARE_FORWARDED_HEADER = "X-Mailflare-Forwarded";
 
@@ -57,5 +58,8 @@ export async function getAccountForwardingDestination(
 	if (!destination || getEmailAddress(destination).toLowerCase() === getEmailAddress(recipient).toLowerCase()) {
 		return null;
 	}
+	// Admin → Security can block forwarding outside our domains; an address saved before the
+	// policy changed must stop forwarding too, so this is checked at delivery, not only on save.
+	if (!(await isForwardingAllowed(env, destination))) return null;
 	return destination;
 }

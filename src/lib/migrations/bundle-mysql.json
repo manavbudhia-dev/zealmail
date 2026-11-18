@@ -336,6 +336,12 @@
       "statements": [
         "ALTER TABLE `messages` ADD `invite_response` text;"
       ]
+    },
+    {
+      "name": "0012_security_policy.sql",
+      "statements": [
+        "ALTER TABLE `app_settings` ADD `security_policy` text;"
+      ]
     }
   ]
 }

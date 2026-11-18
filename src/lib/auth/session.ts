@@ -3,10 +3,9 @@ import { revokeAllDeviceKeys } from "@/lib/auth/device-keys";
 import { newId } from "@/lib/ids";
 import { getDb } from "@/db";
 import { sessions, users } from "@/db/schema";
+import { getSessionLifetimeMs } from "@/lib/security/policy";
 
 export const SESSION_COOKIE = "ep_session";
-const SESSION_DAYS = 30;
-
 export function generateSessionToken(): string {
 	return newId("sess");
 }
@@ -22,7 +21,8 @@ export async function createSession(env: CloudflareEnv, userId: string): Promise
 	const db = getDb(env);
 	const token = generateSessionToken();
 	const tokenHash = await hashSessionToken(token);
-	const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
+	// Admin → Security sets the lifetime; saving a shorter one also cuts existing sessions short.
+	const expiresAt = new Date(Date.now() + await getSessionLifetimeMs(env));
 
 	await db.insert(sessions).values({
 		id: newId(),

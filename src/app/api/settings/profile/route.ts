@@ -9,6 +9,7 @@ import { getLicenseEntitlements } from "@/lib/licenses/service";
 import { syncPersonalIdentity } from "@/lib/profile/sync";
 import type { UpdateProfileInput } from "./types";
 import { parseUpdateProfileRequest } from "./utils";
+import { checkForwardingAddress } from "@/lib/security/policy";
 
 export async function PATCH(request: Request) {
 	const env = getEnv();
@@ -29,6 +30,10 @@ export async function PATCH(request: Request) {
 		return NextResponse.json({ error: "A Pro or Team license is required for email forwarding" }, { status: 403 });
 	}
 	const forwardingEmail = parsed.forwardingEmail === undefined ? user.forwardingEmail : parsed.forwardingEmail;
+	if (forwardingEmail !== user.forwardingEmail) {
+		const blocked = await checkForwardingAddress(env, forwardingEmail);
+		if (blocked) return blocked;
+	}
 	await syncPersonalIdentity(db, {
 		userId: user.id,
 		name: parsed.name,

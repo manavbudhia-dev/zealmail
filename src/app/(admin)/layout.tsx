@@ -31,6 +31,7 @@ const primaryOnlyPrefixes = [
   "/activity",
   "/audit-logs",
   "/general",
+  "/security",
   "/ai-usage",
 ];
 

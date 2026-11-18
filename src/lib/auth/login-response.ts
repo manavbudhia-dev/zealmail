@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { ACCOUNTS_COOKIE, rememberLogin } from "@/lib/auth/accounts";
 import { createSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { recordAuthActivity } from "@/lib/auth/activity";
+import { getSessionLifetimeMs } from "@/lib/security/policy";
 import type { AuthActivityAction } from "@/lib/auth/activity-types";
 
 /**
@@ -29,7 +30,7 @@ export async function completeLogin(
 		secure: process.env.NODE_ENV === "production",
 		sameSite: "lax",
 		path: "/",
-		maxAge: 60 * 60 * 24 * 30,
+		maxAge: Math.floor(await getSessionLifetimeMs(env) / 1000),
 	});
 	const accountsJar = await cookies();
 	await rememberLogin(env, response, accountsJar.get(ACCOUNTS_COOKIE)?.value, token, accountsJar.get(SESSION_COOKIE)?.value);

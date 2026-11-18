@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AUTH_SESSION_CHANGED_EVENT, authFetch } from "@/lib/auth/client";
+import type { TwoStepStatus } from "@/lib/security/policy-types";
 
 export type CurrentUser = {
 	id: string;
@@ -22,6 +23,8 @@ export type SessionInfo = {
 	hasMailboxes?: boolean;
 	isSetup?: boolean;
 	user?: (CurrentUser & { timeZone?: string | null }) | null;
+	/** Admin → Security 2-step verification requirement for this account; null when unknown. */
+	twoStep?: TwoStepStatus | null;
 };
 
 const SESSION_INFO_MAX_AGE_MS = 5 * 60 * 1000;

@@ -11,6 +11,7 @@ export const adminPageTitles: Record<string, TranslationKey> = {
 	"/spam-filter": "admin.nav.spamFilter",
 	"/api-keys": "admin.section.apiKeysTitle",
 	"/general": "admin.nav.general",
+	"/security": "admin.nav.security",
 	"/agent": "admin.nav.agent",
 	"/accounts": "admin.nav.accounts",
 	"/activity": "admin.nav.activity",

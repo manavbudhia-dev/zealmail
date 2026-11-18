@@ -13,6 +13,7 @@ import { getAccountSeatError } from "@/lib/licenses/seats";
 import { ensureMailboxDomainRouting } from "@/lib/mailboxes/domain-addresses";
 import type { CreateUserAccountInput } from "./types";
 import { accountListItemFromUser, domainOwnerIdsForAdmin, getDomainForAdmin } from "./utils";
+import { getPasswordPolicyError, passwordPolicyResponse } from "@/lib/security/policy";
 
 type AccountAdminActor = {
 	id: string;
@@ -24,6 +25,8 @@ type AccountAdminActor = {
 export async function createAccountResponse(env: CloudflareEnv, actor: AccountAdminActor, input: CreateUserAccountInput) {
 	const seatError = await getAccountSeatError(env);
 	if (seatError) return NextResponse.json({ error: seatError }, { status: 403 });
+	const policyError = await getPasswordPolicyError(env, input.password);
+	if (policyError) return passwordPolicyResponse(policyError);
 	const db = getDb(env);
 	const adminUserId = actor.id;
 	const domainOwnerIds = domainOwnerIdsForAdmin(actor);

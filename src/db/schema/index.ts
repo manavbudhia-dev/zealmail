@@ -1090,6 +1090,8 @@ export const appSettings = sqliteTable("app_settings", {
 	spamDomainAgeCheck: bool("spam_domain_age_check").notNull().default(true),
 	/** JSON: brands the administrator added for display-name impersonation checks (see src/lib/spam/settings.ts). */
 	spamBrands: text("spam_brands"),
+	/** JSON: organization-wide security policy (2-step verification, passwords, sessions, forwarding); see src/lib/security/policy-utils.ts. */
+	securityPolicy: text("security_policy"),
 	updatedAt: timestamp("updated_at")
 		.notNull()
 		.$defaultFn(() => new Date()),

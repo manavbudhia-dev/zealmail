@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ADD COLUMN "security_policy" text;

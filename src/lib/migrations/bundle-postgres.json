@@ -361,6 +361,12 @@
       "statements": [
         "ALTER TABLE \"messages\" ADD COLUMN \"invite_response\" text;"
       ]
+    },
+    {
+      "name": "0012_security_policy.sql",
+      "statements": [
+        "ALTER TABLE \"app_settings\" ADD COLUMN \"security_policy\" text;"
+      ]
     }
   ]
 }

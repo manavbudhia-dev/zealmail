@@ -11,6 +11,8 @@ import { AccountSecurityChangedError, PasskeyOnlyPasswordError, selectAccountByI
 import { deleteUserSessions } from "@/lib/auth/session";
 import { createAuditLog } from "@/lib/mailboxes/audit";
 import type { AdminAccountRouteParams } from "./types";
+import { getPasswordPolicyError, passwordPolicyResponse } from "@/lib/security/policy";
+import { checkForwardingAddress } from "@/lib/security/policy";
 
 export async function GET(request: Request, { params }: AdminAccountRouteParams) {
 	const env = getEnv();
@@ -44,6 +46,14 @@ export async function PATCH(request: Request, { params }: AdminAccountRouteParam
 	}
 	const canForwardEmail = (await getLicenseEntitlements(env)).canForwardEmail;
 	if (!canForwardEmail && parsed.data.forwardingEmail && parsed.data.forwardingEmail !== account.forwardingEmail) return NextResponse.json({ error: "A Pro or Team license is required for email forwarding" }, { status: 403 });
+	if (parsed.data.forwardingEmail && parsed.data.forwardingEmail !== account.forwardingEmail) {
+		const blocked = await checkForwardingAddress(env, parsed.data.forwardingEmail);
+		if (blocked) return blocked;
+	}
+	if (parsed.data.password) {
+		const policyError = await getPasswordPolicyError(env, parsed.data.password);
+		if (policyError) return passwordPolicyResponse(policyError);
+	}
 	try {
 		await updateAccountCredentials(db, id, { name: parsed.data.name, password: parsed.data.password ?? null });
 	} catch (error) {

@@ -14,6 +14,8 @@ import { hasPasswordHash } from "@/lib/auth/password";
 import { consumeStepUpGrant } from "@/lib/auth/webauthn/grants";
 import { createAuditLog } from "@/lib/mailboxes/audit";
 import { authError } from "@/lib/http/auth-error";
+import { getPasswordPolicyError, passwordPolicyResponse } from "@/lib/security/policy";
+import { checkForwardingAddress } from "@/lib/security/policy";
 
 export async function GET(request: Request, { params }: AccountRouteParams) {
 	const access = await requireTeamAdmin(request);
@@ -78,6 +80,10 @@ export async function PATCH(request: Request, { params }: AccountRouteParams) {
 	if (!canForwardEmail && parsed.data.forwardingEmail && parsed.data.forwardingEmail !== account.forwardingEmail) {
 		return NextResponse.json({ error: "A Pro or Team license is required for email forwarding" }, { status: 403 });
 	}
+	if (parsed.data.forwardingEmail && parsed.data.forwardingEmail !== account.forwardingEmail) {
+		const blocked = await checkForwardingAddress(access.env, parsed.data.forwardingEmail);
+		if (blocked) return blocked;
+	}
 	if (account.disabled && !parsed.data.disabled) {
 		const seatError = await getAccountSeatError(access.env);
 		if (seatError) return NextResponse.json({ error: seatError }, { status: 403 });
@@ -86,6 +92,10 @@ export async function PATCH(request: Request, { params }: AccountRouteParams) {
 	// not by silently giving it a password that bypasses its recovery policy.
 	if (parsed.data.password && !hasPasswordHash(account.passwordHash)) {
 		return authError("passkey_only_password", 409);
+	}
+	if (parsed.data.password) {
+		const policyError = await getPasswordPolicyError(access.env, parsed.data.password);
+		if (policyError) return passwordPolicyResponse(policyError);
 	}
 	if (parsed.data.password) {
 		const sessionToken = getSessionTokenFromRequestHeaders(request);

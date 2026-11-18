@@ -49,10 +49,16 @@ export function PasswordSettings() {
 			setMessage(t("settings.password.changed"));
 			await refreshSecurityStatus(true);
 		} catch (err) {
-			setError(authErrorText(err instanceof ClientRequestError ? err.code : undefined, t, "settings.password.failed"));
+			setError(passwordErrorText(err));
 		} finally {
 			setBusy(false);
 		}
+	}
+
+	// The organization's password policy (Admin → Security) explains itself in the server's message.
+	function passwordErrorText(err: unknown): string {
+		if (err instanceof ClientRequestError && err.code === "password_policy" && err.message) return err.message;
+		return authErrorText(err instanceof ClientRequestError ? err.code : undefined, t, "settings.password.failed");
 	}
 
 	async function authorized(token: string) {
@@ -86,7 +92,7 @@ export function PasswordSettings() {
 			setConfirmPassword("");
 			await refreshSecurityStatus(true);
 		} catch (err) {
-			setError(authErrorText(err instanceof ClientRequestError ? err.code : undefined, t, "settings.password.failed"));
+			setError(passwordErrorText(err));
 			await refreshSecurityStatus(true);
 		} finally {
 			setPasswordProof(null);

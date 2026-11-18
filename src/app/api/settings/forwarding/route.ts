@@ -8,6 +8,7 @@ import { getEnv } from "@/lib/cloudflare";
 import { getLicenseEntitlements } from "@/lib/licenses/service";
 import type { UpdateForwardingEmailInput } from "./types";
 import { parseUpdateForwardingEmailRequest } from "./utils";
+import { checkForwardingAddress } from "@/lib/security/policy";
 
 export async function PATCH(request: Request) {
 	const env = getEnv();
@@ -25,6 +26,9 @@ export async function PATCH(request: Request) {
 	if (!(await getLicenseEntitlements(env)).canForwardEmail) {
 		return NextResponse.json({ error: "A Pro or Team license is required for email forwarding" }, { status: 403 });
 	}
+
+	const blocked = await checkForwardingAddress(env, input.forwardingEmail);
+	if (blocked) return blocked;
 
 	await getDb(env)
 		.update(users)

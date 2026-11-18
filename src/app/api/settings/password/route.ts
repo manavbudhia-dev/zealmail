@@ -15,6 +15,7 @@ import { recordAuthActivity } from "@/lib/auth/activity";
 import { authError, isLastAuthMethodError } from "@/lib/http/auth-error";
 import type { ChangePasswordInput } from "./types";
 import { parseChangePasswordRequest } from "./utils";
+import { getPasswordPolicyError, passwordPolicyResponse } from "@/lib/security/policy";
 
 export async function PATCH(request: Request) {
 	const env = getEnv();
@@ -37,6 +38,8 @@ export async function PATCH(request: Request) {
 	if (verifyPassword(parsed.newPassword, user.passwordHash)) {
 		return authError("invalid_request", 400);
 	}
+	const policyError = await getPasswordPolicyError(env, parsed.newPassword);
+	if (policyError) return passwordPolicyResponse(policyError);
 
 	const db = getDb(env);
 	const [updated] = await db
@@ -68,6 +71,9 @@ export async function POST(request: Request) {
 	const parsed = passwordSetSchema.safeParse(await readJsonBody(request, 16 * 1024).catch(() => null));
 	const sessionToken = getSessionTokenFromRequestHeaders(request);
 	if (!parsed.success || !sessionToken) return authError("verification_required", 400);
+	// Before the step-up grant is consumed, so a rejected password does not cost a re-authentication.
+	const policyError = await getPasswordPolicyError(env, parsed.data.newPassword);
+	if (policyError) return passwordPolicyResponse(policyError);
 	if (!(await consumeStepUpGrant(env, {
 		token: parsed.data.stepUpToken,
 		userId: user.id,
