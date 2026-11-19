@@ -36,25 +36,35 @@ export function currentTheme(): 'light' | 'dark' {
   return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 }
 
-/** Default look for newly created fences, matching the current theme. */
-export function defaultFenceStyle(theme: 'light' | 'dark') {
-  return theme === 'light'
-    ? {
-        backgroundColor: 'rgba(255, 255, 255, 0.88)',
-        borderColor: '#3b82f6',
-        borderWidth: 2,
-        opacity: 0.95,
-        labelColor: '#1f2937',
-        labelSize: 14,
-        borderRadius: 8,
-      }
-    : {
-        backgroundColor: 'rgba(30, 41, 59, 0.85)',
-        borderColor: '#3b82f6',
-        borderWidth: 2,
-        opacity: 0.95,
-        labelColor: '#ffffff',
-        labelSize: 14,
-        borderRadius: 8,
-      };
+import type { FenceStyle } from '../../shared/types';
+
+/**
+ * Default look for new fences: a dark, slightly see-through panel with a thin light edge, a centered
+ * white title and large icons. It reads well on light and dark wallpapers alike, so both themes use it.
+ */
+export function defaultFenceStyle(_theme?: 'light' | 'dark'): FenceStyle {
+  return {
+    backgroundColor: 'rgba(16, 20, 26, 0.86)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    opacity: 1,
+    labelColor: '#ffffff',
+    labelSize: 14,
+    borderRadius: 6,
+    iconPx: 34,
+    itemLabelSize: 10,
+  };
+}
+
+// The blue-bordered look earlier versions gave every new fence
+const isOldDefault = (s: FenceStyle) =>
+  s.borderColor === '#3b82f6' &&
+  s.borderWidth === 2 &&
+  s.borderRadius === 8 &&
+  (s.backgroundColor === 'rgba(30, 41, 59, 0.85)' || s.backgroundColor === 'rgba(255, 255, 255, 0.88)');
+
+/** How a fence is drawn: one still on the old default gets the current default (nothing is saved). */
+export function displayStyle(style: FenceStyle): FenceStyle {
+  if (!isOldDefault(style)) return style;
+  return { ...defaultFenceStyle(), iconSize: style.iconSize, columns: style.columns, compactHeader: style.compactHeader };
 }

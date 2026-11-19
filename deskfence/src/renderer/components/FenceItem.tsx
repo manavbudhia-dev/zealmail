@@ -4,6 +4,7 @@ import type { FenceItem as FenceItemType } from '../../shared/types';
 import { useFenceStore } from '../store/fenceStore';
 import { isManagedItem, refreshPortalFence, describeFailures, loadFileIcon } from '../utils/fence-files';
 import FolderIcon from './FolderIcon';
+import { displayStyle } from '../utils/theme';
 
 interface FenceItemProps {
   item: FenceItemType;
@@ -21,7 +22,8 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
   const [iconUrl, setIconUrl] = useState<string | null>(() =>
     item.icon?.startsWith('data:') || item.icon === 'folder' ? item.icon : null
   );
-  const iconPx = fence?.style.iconPx ?? 32;
+  const style = fence ? displayStyle(fence.style) : undefined;
+  const iconPx = style?.iconPx ?? 34;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Real Windows icon (falls back to the emoji below if it can't be loaded)
@@ -109,7 +111,7 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
 
   return (
     <div
-      className={`relative flex flex-col items-center justify-center ${fence?.style.compactHeader ? 'p-1' : 'p-2'} rounded hover:bg-white/10 cursor-pointer transition-all group`}
+      className="relative flex flex-col items-center justify-start px-0 pt-1.5 pb-1 rounded hover:bg-white/10 cursor-pointer transition-colors group"
       onClick={handleClick}
       draggable={!locked}
       onDragStart={handleDragStart}
@@ -130,7 +132,7 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
         </button>
       )}
       <div
-        className="mb-1 group-hover:scale-110 transition-transform flex items-center justify-center"
+        className="mb-1 flex items-center justify-center"
         style={{ height: iconPx, fontSize: Math.round(iconPx * 0.9) }}
       >
         {/* 'folder' = the main process found a folder (Windows would have given a drive icon) */}
@@ -143,13 +145,20 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
         )}
       </div>
       <div
-        className="text-xs text-center break-all line-clamp-2 w-full"
+        className="fence-item-label text-center line-clamp-2 w-full"
         style={{
-          color: fence?.style.labelColor || 'rgba(255,255,255,0.9)',
-          ...(fence?.style.itemLabelSize ? { fontSize: fence.style.itemLabelSize, lineHeight: 1.2 } : {}),
+          color: style?.labelColor || '#ffffff',
+          fontSize: style?.itemLabelSize ?? 10,
+          lineHeight: 1.25,
         }}
       >
-        {displayName}
+        {/* a long name may wrap after a dot ("Interview." / "xlsx") rather than mid-word */}
+        {displayName.split(/(?<=\.)/).map((part, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <wbr />}
+            {part}
+          </React.Fragment>
+        ))}
       </div>
 
       {/* Item menu. Portaled to <body>: a fixed menu inside a transformed fence would be misplaced. */}

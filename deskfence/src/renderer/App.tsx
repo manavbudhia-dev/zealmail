@@ -373,8 +373,8 @@ function App() {
   const openMenuFromButton = (e: React.MouseEvent) => {
     e.stopPropagation();
     setContextMenu(contextMenu ? null : {
-      x: Math.max(8, window.innerWidth - 230),
-      y: Math.max(8, window.innerHeight - 400),
+      x: 12,
+      y: Math.max(8, window.innerHeight - 340),
       fromButton: true,
     });
   };
@@ -488,7 +488,7 @@ function App() {
       {/* Menu button (settings, automation, scheduled tasks, peek, hide) */}
       <button
         onClick={openMenuFromButton}
-        className="fixed bottom-6 right-6 w-10 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all z-50"
+        className="fixed bottom-3 left-3 w-8 h-8 bg-gray-800/60 hover:bg-gray-700 text-white rounded-full shadow flex items-center justify-center opacity-50 hover:opacity-100 transition-all z-50"
         title="DeskFence menu"
       >
         ⋯

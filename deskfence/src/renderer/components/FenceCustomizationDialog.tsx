@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFenceStore } from '../store/fenceStore';
-import { defaultFenceStyle } from '../utils/theme';
+import { defaultFenceStyle, displayStyle } from '../utils/theme';
 import type { Fence, FenceStyle } from '../../shared/types';
 
 interface FenceCustomizationDialogProps {
@@ -26,6 +26,7 @@ function joinColor(hex: string, alpha: number): string {
 }
 
 const PRESETS: { name: string; style: Partial<FenceStyle> }[] = [
+  { name: 'Classic', style: { backgroundColor: 'rgba(16, 20, 26, 0.86)', borderColor: 'rgba(255, 255, 255, 0.12)', labelColor: '#ffffff', borderWidth: 1, borderRadius: 6, opacity: 1 } },
   { name: 'Slate', style: { backgroundColor: 'rgba(30, 41, 59, 0.85)', borderColor: '#3b82f6', labelColor: '#ffffff' } },
   { name: 'Glass', style: { backgroundColor: 'rgba(255, 255, 255, 0.15)', borderColor: '#ffffff', labelColor: '#ffffff' } },
   { name: 'Light', style: { backgroundColor: 'rgba(255, 255, 255, 0.88)', borderColor: '#3b82f6', labelColor: '#1f2937' } },
@@ -43,7 +44,7 @@ const toDateInput = (ms?: number) => {
 const FenceCustomizationDialog: React.FC<FenceCustomizationDialogProps> = ({ fence, onClose }) => {
   const { updateFence, saveFences } = useFenceStore();
   const [name, setName] = useState(fence.name);
-  const [style, setStyle] = useState<FenceStyle>({ ...fence.style });
+  const [style, setStyle] = useState<FenceStyle>({ ...displayStyle(fence.style) });
   const [category, setCategory] = useState(fence.category || '');
   const [tags, setTags] = useState((fence.tags || []).join(', '));
   const [dueDate, setDueDate] = useState(toDateInput(fence.dueDate));
@@ -128,7 +129,7 @@ const FenceCustomizationDialog: React.FC<FenceCustomizationDialogProps> = ({ fen
                 </button>
               ))}
               <button
-                onClick={() => setStyle({ ...style, ...defaultFenceStyle('dark') })}
+                onClick={() => setStyle({ ...style, ...defaultFenceStyle() })}
                 className="px-3 py-1 rounded text-xs bg-gray-700 text-gray-300 hover:text-white"
               >
                 Reset
@@ -145,8 +146,8 @@ const FenceCustomizationDialog: React.FC<FenceCustomizationDialogProps> = ({ fen
             {row('Whole fence opacity', range(Math.round(style.opacity * 100), 20, 100, 5, (v) => set({ opacity: v / 100 }), '%'))}
             {row('Title color', <input type="color" value={splitColor(style.labelColor).hex} onChange={(e) => set({ labelColor: e.target.value })} />)}
             {row('Title size', range(style.labelSize, 10, 28, 1, (v) => set({ labelSize: v }), 'px'))}
-            {row('Icon size', range(style.iconPx ?? 32, 16, 96, 4, (v) => set({ iconPx: v }), 'px'))}
-            {row('Item label size', range(style.itemLabelSize ?? 12, 9, 20, 1, (v) => set({ itemLabelSize: v }), 'px'))}
+            {row('Icon size', range(style.iconPx ?? 34, 16, 96, 4, (v) => set({ iconPx: v }), 'px'))}
+            {row('Item label size', range(style.itemLabelSize ?? 10, 9, 20, 1, (v) => set({ itemLabelSize: v }), 'px'))}
             {row('Columns', (
               <select
                 className={input}

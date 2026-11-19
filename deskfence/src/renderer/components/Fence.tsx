@@ -4,6 +4,8 @@ import { useFenceStore } from '../store/fenceStore';
 import type { Fence as FenceType } from '../../shared/types';
 import FenceItem from './FenceItem';
 import FolderIcon from './FolderIcon';
+import { createPortal } from 'react-dom';
+import { displayStyle } from '../utils/theme';
 import FolderPortalDialog from './FolderPortalDialog';
 import FenceCustomizationDialog from './FenceCustomizationDialog';
 import FenceRulesDialog from './FenceRulesDialog';
@@ -53,7 +55,9 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
   const tabbed = hasTabs(fence);
   const currentTabId = activeTabId(fence);
 
-  const isSelected = selectedFenceId === fence.id;
+  // fences still on the old blue default are drawn with the current default look (nothing is saved)
+  const style = displayStyle(fence.style);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
   // A freshly drawn fence opens its title for typing, like naming a new folder
   const renameRequested = useFenceStore((state) => state.renameFenceId === fence.id);
@@ -177,7 +181,8 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
       case 'medium': return 64;
       case 'large': return 96;
       case 'extra-large': return 128;
-      default: return fence.gridSize || 80;
+      // a cell is the icon plus room for its name: 5 icons fit across a ~290px fence, like the original
+      default: return Math.max(52, (style.iconPx ?? 34) + 20);
     }
   };
 
@@ -411,6 +416,101 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
     hoverClose();
   };
 
+  type MenuEntry = { label: string; run: () => void; disabled?: boolean } | '-';
+  const fenceMenuItems = (): MenuEntry[] => {
+    const locked = !!fence.isLocked;
+    const lockedAlert = (what: string) => () => alert(`This fence is locked. Unlock it to ${what}.`);
+    const entries: MenuEntry[] = [
+      { label: 'Rename', run: locked ? lockedAlert('rename it') : () => setIsEditing(true), disabled: tabbed },
+      { label: '🎨 Customize…', run: () => setShowCustomization(true) },
+      '-',
+    ];
+    if (!fence.autoRollup) {
+      entries.push({
+        label: fence.collapsed ? '▾ Expand' : '▴ Roll up to title',
+        run: () => {
+          updateFence(fence.id, { collapsed: !fence.collapsed });
+          saveFences();
+        },
+      });
+    }
+    entries.push(
+      {
+        label: fence.autoRollup ? '✓ Auto roll-up (on hover)' : 'Auto roll-up (on hover)',
+        run: () => {
+          updateFence(fence.id, { autoRollup: !fence.autoRollup, collapsed: false });
+          saveFences();
+        },
+      },
+      {
+        label: locked ? '🔓 Unlock' : '🔒 Lock',
+        run: () => {
+          updateFence(fence.id, { isLocked: !locked });
+          saveFences();
+        },
+      },
+      '-'
+    );
+    if (!fence.portalPath) {
+      entries.push({
+        label: '🗂 Add tab',
+        run: locked
+          ? lockedAlert('add tabs')
+          : () => {
+              updateFence(fence.id, addTab(latestFence()));
+              saveFences();
+            },
+      });
+    }
+    if (tabbed && currentTabId) {
+      const current = fence.tabs!.find((t) => t.id === currentTabId);
+      entries.push(
+        {
+          label: 'Rename this tab',
+          run: locked
+            ? lockedAlert('rename tabs')
+            : () => {
+                setEditingTabId(currentTabId);
+                setEditingTabName(current?.name || '');
+              },
+        },
+        {
+          label: 'Close this tab',
+          run: locked
+            ? lockedAlert('close tabs')
+            : () => {
+                if (confirm(`Close tab "${current?.name}"? Its items move to the neighbouring tab.`)) {
+                  updateFence(fence.id, removeTab(latestFence(), currentTabId));
+                  saveFences();
+                }
+              },
+        }
+      );
+    }
+    entries.push(
+      {
+        label: fence.portalPath ? '📁 Linked folder…' : '🔗 Link to a folder…',
+        run: () => {
+          if (tabbed) return alert('A fence with tabs cannot be linked to a folder. Close the extra tabs first.');
+          setShowPortalDialog(true);
+        },
+      },
+      { label: `⚡ Rules${fence.rules?.length ? ` (${fence.rules.length})` : ''}…`, run: () => setShowRules(true) }
+    );
+    if (displayInfo && displayInfo.displays.length > 1) {
+      entries.push({
+        label: '🖥 Move to next monitor',
+        run: () => {
+          // lands near the top-left of the other monitor; this window stops drawing it
+          updateFence(fence.id, { displayId: nextDisplayId(fence, displayInfo), position: { x: 60, y: 60 } });
+          saveFences();
+        },
+      });
+    }
+    entries.push('-', { label: '✕ Delete fence', run: locked ? lockedAlert('delete it') : () => handleDelete() });
+    return entries;
+  };
+
   return (
     <>
     <Draggable
@@ -424,19 +524,18 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
     >
       <div
         ref={nodeRef}
-        className={`absolute fence-enter ${fence.style.compactHeader ? 'fence-compact' : ''} ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
+        className="fence absolute fence-enter flex flex-col overflow-hidden" 
         data-fence-id={fence.id}
         style={{
           width: fence.size.width,
           height: rolledUp ? undefined : fence.size.height,
           // a dropped-down auto roll-up fence floats above the fences next to it
           zIndex: fence.autoRollup && !rolledUp ? 30 : undefined,
-          ...(fence.style.compactHeader ? { display: 'flex', flexDirection: 'column' as const } : {}),
-          backgroundColor: fence.style.backgroundColor,
-          borderColor: fence.style.borderColor,
-          borderWidth: fence.style.borderWidth,
-          borderRadius: fence.style.borderRadius,
-          opacity: fence.style.opacity,
+          backgroundColor: style.backgroundColor,
+          border: `${style.borderWidth}px solid ${style.borderColor}`,
+          borderRadius: style.borderRadius,
+          opacity: style.opacity,
+          boxShadow: '0 4px 18px rgba(0, 0, 0, 0.25)',
         }}
         onClick={() => setSelectedFence(fence.id)}
         onDrop={handleDrop}
@@ -445,16 +544,82 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
         onMouseEnter={() => hoverOpen()}
         onMouseLeave={() => hoverClose()}
       >
-        {/* Header */}
+        {/* Header: centered title (or the tabs), options behind ⋯ / right-click */}
         <div
-          className="fence-header flex items-center justify-between px-3 py-2 cursor-move select-none"
-          style={{
-            borderBottom: fence.style.compactHeader ? 'none' : `1px solid ${fence.style.borderColor}`,
-            color: fence.style.labelColor,
-            fontSize: fence.style.labelSize,
+          className={`fence-header relative flex items-center justify-center ${tabbed ? 'pl-1.5 pr-8' : 'px-8'} cursor-move select-none`}
+          style={{ color: style.labelColor, fontSize: style.labelSize, minHeight: Math.round(style.labelSize * 2) }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setMenu({ x: e.clientX, y: e.clientY });
           }}
         >
-          {isEditing ? (
+          {tabbed ? (
+            <div className="flex w-full items-stretch gap-1 py-1">
+              {fence.tabs!.map((tab) => {
+                const active = tab.id === currentTabId;
+                return (
+                  <div
+                    key={tab.id}
+                    data-tab-id={tab.id}
+                    className={`group/tab relative flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-0.5 rounded cursor-pointer ${
+                      active ? 'bg-white/15 font-semibold' : 'opacity-60 hover:opacity-100 hover:bg-white/5'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      updateFence(fence.id, switchTab(latestFence(), tab.id));
+                      saveFences();
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (fence.isLocked) return;
+                      setEditingTabId(tab.id);
+                      setEditingTabName(tab.name);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      // drop an item of this fence onto another tab to move it there
+                      const payload = e.dataTransfer.getData('application/json');
+                      if (!payload || fence.isLocked) return;
+                      try {
+                        const { itemId, fenceId: fromId } = JSON.parse(payload);
+                        if (fromId !== fence.id) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        updateFence(fence.id, moveItemToTab(latestFence(), itemId, tab.id));
+                        saveFences();
+                      } catch {
+                        /* not our drag */
+                      }
+                    }}
+                    title="Click to open • double-click to rename • drop an item here to move it to this tab"
+                  >
+                    {editingTabId === tab.id ? (
+                      <input
+                        autoFocus
+                        value={editingTabName}
+                        onChange={(e) => setEditingTabName(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={() => {
+                          updateFence(fence.id, renameTab(latestFence(), tab.id, editingTabName));
+                          saveFences();
+                          setEditingTabId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                          if (e.key === 'Escape') setEditingTabId(null);
+                        }}
+                        className="w-full min-w-0 bg-transparent text-center border-b border-current outline-none"
+                      />
+                    ) : (
+                      <span className="truncate">{tab.name}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : isEditing ? (
             <input
               type="text"
               value={name}
@@ -462,278 +627,56 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
               onBlur={handleNameSave}
               onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
               onFocus={(e) => e.target.select()}
-              className="bg-transparent border-b border-white/50 outline-none px-1"
+              className="w-full min-w-0 bg-transparent text-center font-semibold border-b border-white/50 outline-none px-1"
               autoFocus
             />
           ) : (
-            <div className="flex items-center gap-2">
-              {fence.style.compactHeader && <FolderIcon size={Math.round(fence.style.labelSize * 1.45)} />}
-              <span
-                className="font-semibold"
-                onDoubleClick={() => setIsEditing(true)}
-              >
+            <div className="flex items-center justify-center gap-2 min-w-0 py-0.5">
+              {style.compactHeader && <FolderIcon size={Math.round(style.labelSize * 1.3)} />}
+              <span className="font-semibold truncate" onDoubleClick={() => setIsEditing(true)} title="Double-click to rename">
                 {fence.name}
               </span>
-              {fence.category && (
-                <span className="text-xs opacity-70 bg-white/20 px-2 py-0.5 rounded">
-                  {fence.category}
-                </span>
-              )}
-              {fence.dueDate && (
-                <span className="text-xs opacity-70 bg-yellow-600/30 px-2 py-0.5 rounded">
-                  📅 {new Date(fence.dueDate).toLocaleDateString()}
-                </span>
-              )}
+              {fence.isLocked && <span className="text-[0.7em] opacity-60" title="Locked">🔒</span>}
+              {fence.portalPath && <span className="text-[0.7em] opacity-60" title={`Shows the folder ${fence.portalPath}`}>🔗</span>}
             </div>
           )}
 
-          <div className="flex gap-2 items-center fence-actions">
-            {!fence.autoRollup && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateFence(fence.id, { collapsed: !fence.collapsed });
-                  saveFences();
-                }}
-                className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-                title={fence.collapsed ? 'Expand' : 'Roll up to title bar'}
-              >
-                {fence.collapsed ? '▸' : '▾'}
-              </button>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // starts from a clean state either way (not manually rolled up)
-                updateFence(fence.id, { autoRollup: !fence.autoRollup, collapsed: false });
-                saveFences();
-              }}
-              className={`text-xs transition-opacity rounded px-1 ${
-                fence.autoRollup ? 'bg-white/25 opacity-100' : 'opacity-70 hover:opacity-100'
-              }`}
-              title={
-                fence.autoRollup
-                  ? 'Auto roll-up is ON: rolls up when the mouse leaves, drops down on hover (click to turn off)'
-                  : 'Auto roll-up: roll up to the title bar when the mouse leaves, drop down on hover'
-              }
-            >
-              ⇅
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                updateFence(fence.id, { isLocked: !fence.isLocked });
-                saveFences();
-              }}
-              className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-              title={fence.isLocked ? 'Unlock (allow moving, resizing, changing)' : 'Lock (prevent moving, resizing, changes)'}
-            >
-              {fence.isLocked ? '🔒' : '🔓'}
-            </button>
-            {!fence.portalPath && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (fence.isLocked) return alert('This fence is locked. Unlock it (🔒) to add tabs.');
-                  updateFence(fence.id, addTab(latestFence()));
-                  saveFences();
-                }}
-                className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-                title="Add a tab"
-              >
-                🗂
-              </button>
-            )}
-            {displayInfo && displayInfo.displays.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const target = nextDisplayId(fence, displayInfo);
-                  // lands near the top-left of the other monitor; this window stops drawing it
-                  updateFence(fence.id, { displayId: target, position: { x: 60, y: 60 } });
-                  saveFences();
-                }}
-                className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-                title="Move this fence to the next monitor"
-              >
-                🖥
-              </button>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowRules(true);
-              }}
-              className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-              title={`Rules for this fence${fence.rules?.length ? ` (${fence.rules.length})` : ''}`}
-            >
-              ⚡{fence.rules && fence.rules.length > 0 ? <sup>{fence.rules.length}</sup> : null}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowCustomization(true);
-              }}
-              className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-              title="Customize fence"
-            >
-              🎨
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (tabbed) {
-                  alert('A fence with tabs cannot be linked to a folder. Close the extra tabs first.');
-                  return;
-                }
-                setShowPortalDialog(true);
-              }}
-              className="text-xs opacity-70 hover:opacity-100 transition-opacity"
-              title={fence.portalPath ? `Portal: ${fence.portalPath}` : 'Link to folder'}
-            >
-              {fence.portalPath ? '📁' : '🔗'}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (fence.isLocked) {
-                  alert('This fence is locked. Unlock it (🔒) to delete it.');
-                  return;
-                }
-                handleDelete();
-              }}
-              className="text-xs opacity-50 hover:opacity-100 transition-opacity"
-              title="Delete fence"
-            >
-              ✕
-            </button>
-          </div>
+          <button
+            className="fence-actions absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-base leading-none hover:bg-white/15"
+            title="Fence options"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              setMenu(menu ? null : { x: r.right - 200, y: r.bottom + 4 });
+            }}
+          >
+            ⋯
+          </button>
         </div>
 
-        {/* Content Area */}
-        {tabbed && !rolledUp && (
-          <div
-            className={`fence-tabs flex items-center gap-1 px-2 py-1 overflow-x-auto ${fence.autoRollup ? 'fence-dropdown' : ''}`}
-            style={{ color: fence.style.labelColor, borderBottom: `1px solid ${fence.style.borderColor}55` }}
-          >
-            {fence.tabs!.map((tab) => {
-              const active = tab.id === currentTabId;
-              return (
-                <div
-                  key={tab.id}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs cursor-pointer whitespace-nowrap ${
-                    active ? 'bg-white/25 font-semibold' : 'hover:bg-white/10 opacity-80'
-                  }`}
-                  data-tab-id={tab.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateFence(fence.id, switchTab(latestFence(), tab.id));
-                    saveFences();
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    if (fence.isLocked) return;
-                    setEditingTabId(tab.id);
-                    setEditingTabName(tab.name);
-                  }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    // drop an item of this fence onto another tab to move it there
-                    const payload = e.dataTransfer.getData('application/json');
-                    if (!payload || fence.isLocked) return;
-                    try {
-                      const { itemId, fenceId: fromId } = JSON.parse(payload);
-                      if (fromId !== fence.id) return;
-                      e.preventDefault();
-                      e.stopPropagation();
-                      updateFence(fence.id, moveItemToTab(latestFence(), itemId, tab.id));
-                      saveFences();
-                    } catch {
-                      /* not our drag */
-                    }
-                  }}
-                  title="Click to open • double-click to rename • drop an item here to move it to this tab"
-                >
-                  {editingTabId === tab.id ? (
-                    <input
-                      autoFocus
-                      value={editingTabName}
-                      onChange={(e) => setEditingTabName(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onBlur={() => {
-                        updateFence(fence.id, renameTab(latestFence(), tab.id, editingTabName));
-                        saveFences();
-                        setEditingTabId(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                        if (e.key === 'Escape') setEditingTabId(null);
-                      }}
-                      className="w-24 bg-transparent border-b border-current outline-none"
-                    />
-                  ) : (
-                    <span>{tab.name}</span>
-                  )}
-                  {active && !fence.isLocked && (
-                    <button
-                      className="opacity-60 hover:opacity-100 leading-none"
-                      title="Close this tab (its items move to the neighbouring tab)"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Close tab "${tab.name}"? Its items move to the neighbouring tab.`)) {
-                          updateFence(fence.id, removeTab(latestFence(), tab.id));
-                          saveFences();
-                        }
-                      }}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-            {!fence.isLocked && (
-              <button
-                className="px-1.5 text-xs opacity-70 hover:opacity-100"
-                title="Add a tab"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateFence(fence.id, addTab(latestFence()));
-                  saveFences();
-                }}
-              >
-                ＋
-              </button>
-            )}
+        {/* Category / tags / due date: a quiet line under the title */}
+        {!rolledUp && (fence.category || fence.dueDate || (fence.tags && fence.tags.length > 0)) && (
+          <div className="flex flex-wrap justify-center gap-1 px-2 pb-1 text-[11px]" style={{ color: style.labelColor }}>
+            {fence.category && <span className="opacity-70 bg-white/10 px-2 rounded">{fence.category}</span>}
+            {fence.dueDate && <span className="opacity-70 bg-yellow-600/30 px-2 rounded">📅 {new Date(fence.dueDate).toLocaleDateString()}</span>}
+            {fence.tags?.map((tag) => (
+              <span key={tag} className="bg-blue-600/40 px-2 rounded">{tag}</span>
+            ))}
           </div>
         )}
 
+        {/* Items */}
         <div
-          className={`${fence.style.compactHeader ? 'px-3 pb-2' : 'p-3'} overflow-auto ${
-            fence.style.compactHeader ? 'fence-body flex-1 min-h-0' : tabbed ? 'h-[calc(100%-68px)]' : 'h-[calc(100%-40px)]'
-          } ${fence.autoRollup ? 'fence-dropdown' : ''}`}
+          className={`fence-body flex-1 min-h-0 overflow-auto px-1.5 pb-1.5 ${fence.autoRollup ? 'fence-dropdown' : ''}`}
           style={{ display: rolledUp ? 'none' : undefined }}
         >
-          {fence.tags && fence.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {fence.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs px-2 py-0.5 bg-blue-600/50 text-white rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-
           <div
-            className="grid gap-2"
+            className="grid gap-x-0 gap-y-1"
             style={{
-              gridTemplateColumns: fence.style.columns
-                ? `repeat(${fence.style.columns}, minmax(0, 1fr))`
-                : `repeat(auto-fill, minmax(${getIconSize(fence.style.iconSize)}px, 1fr))`,
-              ...(fence.style.compactHeader ? { gap: '10px 4px' } : {}),
+              gridTemplateColumns: style.columns
+                ? `repeat(${style.columns}, minmax(0, 1fr))`
+                : `repeat(auto-fill, minmax(${getIconSize(style.iconSize)}px, 1fr))`,
             }}
           >
             {fence.items.map((item) => (
@@ -742,34 +685,59 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
           </div>
 
           {fence.items.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm gap-2">
-              {fence.portalPath ? (
-                <>
-                  <div>📁 Folder Portal</div>
-                  <div className="text-xs">Folder is empty</div>
-                </>
-              ) : (
-                <>
-                  <div>Drag files here</div>
-                  <div className="text-xs">or click 🔗 to link a folder</div>
-                </>
-              )}
+            <div className="flex flex-col items-center justify-center h-full text-xs gap-1 opacity-50" style={{ color: style.labelColor }}>
+              {fence.portalPath ? 'This folder is empty' : 'Drop files here'}
             </div>
           )}
         </div>
 
-        {/* Resize Handle */}
+        {/* Resize handle: only visible while the mouse is over the fence */}
         {!fence.isLocked && !rolledUp && (
           <div
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+            className="fence-resize absolute bottom-0 right-0 w-3.5 h-3.5 cursor-se-resize"
             onMouseDown={handleResize}
-            style={{
-              background: 'linear-gradient(135deg, transparent 50%, rgba(59, 130, 246, 0.5) 50%)',
-            }}
+            style={{ background: `linear-gradient(135deg, transparent 55%, ${style.labelColor}66 55%)`, borderBottomRightRadius: style.borderRadius }}
           />
         )}
       </div>
     </Draggable>
+    {menu &&
+      createPortal(
+        <div
+          className="fixed inset-0 z-[70]"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setMenu(null);
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenu(null);
+          }}
+        >
+          <div
+            className="absolute bg-gray-800 border border-gray-600 rounded-lg shadow-2xl py-1 w-52 text-sm text-white"
+            style={{ left: Math.max(8, Math.min(menu.x, window.innerWidth - 216)), top: Math.max(8, Math.min(menu.y, window.innerHeight - 420)) }}
+          >
+            {fenceMenuItems().map((entry, index) =>
+              entry === '-' ? (
+                <div key={index} className="my-1 border-t border-gray-700" />
+              ) : (
+                <button
+                  key={entry.label}
+                  className="w-full text-left px-4 py-1.5 hover:bg-gray-700 disabled:opacity-40"
+                  disabled={entry.disabled}
+                  onClick={() => {
+                    setMenu(null);
+                    entry.run();
+                  }}
+                >
+                  {entry.label}
+                </button>
+              )
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     {showPortalDialog && (
       <FolderPortalDialog
         fence={fence}

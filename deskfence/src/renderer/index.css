@@ -131,8 +131,15 @@ body {
 [data-theme="light"] .fixed ::placeholder { color:#9ca3af; }
 [data-theme="dark"] .fixed input, [data-theme="dark"] .fixed select, [data-theme="dark"] .fixed textarea { color-scheme: dark; }
 
-/* Compact fences (layout presets): title only, header buttons appear on hover, no scrollbars */
-.fence-compact .fence-actions { opacity: 0; transition: opacity 0.15s ease; }
-.fence-compact:hover .fence-actions { opacity: 1; }
-.fence-compact .fence-body { scrollbar-width: none; }
-.fence-compact .fence-body::-webkit-scrollbar { display: none; }
+/* Fences: the options button and the resize corner only show while the mouse is over the fence */
+.fence .fence-actions,
+.fence .fence-resize { opacity: 0; transition: opacity 0.15s ease; }
+.fence:hover .fence-actions { opacity: 0.8; }
+.fence:hover .fence-resize { opacity: 1; }
+.fence .fence-actions:hover { opacity: 1; }
+/* thin, quiet scrollbar inside fences */
+.fence .fence-body::-webkit-scrollbar { width: 6px; }
+.fence .fence-body::-webkit-scrollbar-track { background: transparent; }
+.fence .fence-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 3px; }
+/* item names stay readable on any panel colour */
+.fence-item-label { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); overflow-wrap: break-word; }
