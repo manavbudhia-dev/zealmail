@@ -4,6 +4,8 @@ export interface FolderEntry {
   name: string;
   path: string;
   type: 'file' | 'folder';
+  size?: number;
+  modified?: number;
 }
 
 /** Turns folder listing into fence items, reusing ids of items that are already there. */
@@ -17,6 +19,8 @@ export function filesToItems(files: FolderEntry[], existing: FenceItem[] = []): 
       path: file.path,
       type: file.type,
       position: previous?.position ?? { x: 0, y: 0 },
+      ...(file.type === 'file' && Number.isFinite(file.size) ? { size: file.size } : {}),
+      ...(Number.isFinite(file.modified) ? { modified: file.modified } : {}),
     };
   });
 }

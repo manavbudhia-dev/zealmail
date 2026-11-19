@@ -4,6 +4,7 @@ import type { FenceItem as FenceItemType } from '../../shared/types';
 import { useFenceStore } from '../store/fenceStore';
 import { isManagedItem, refreshPortalFence, describeFailures, loadFileIcon } from '../utils/fence-files';
 import FolderIcon from './FolderIcon';
+import { formatModified, formatSize, typeLabel, gridTemplate, type DetailsColumn } from '../utils/details';
 import { displayStyle } from '../utils/theme';
 
 interface FenceItemProps {
@@ -13,9 +14,23 @@ interface FenceItemProps {
   onOpenFolder?: (item: FenceItemType) => void;
   /** An item of a browsed sub-folder: it is not stored in the fence, so it cannot be moved or removed */
   readOnly?: boolean;
+  /** 'row' = one line of the Details view */
+  layout?: 'tile' | 'row';
+  columns?: DetailsColumn[];
+  selected?: boolean;
+  onSelect?: (itemId: string) => void;
 }
 
-const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId, onOpenFolder, readOnly = false }) => {
+const FenceItem: React.FC<FenceItemProps> = ({
+  item,
+  fenceId,
+  onOpenFolder,
+  readOnly = false,
+  layout = 'tile',
+  columns = ['name', 'modified', 'type', 'size'],
+  selected = false,
+  onSelect,
+}) => {
   const handleClick = () => {
     if (onOpenFolder && item.type === 'folder') {
       onOpenFolder(item);
@@ -119,38 +134,14 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId, onOpenFolder, read
     }
   };
 
-  return (
-    <div
-      className="relative flex flex-col items-center justify-start px-0 pt-1.5 pb-1 rounded hover:bg-white/10 cursor-pointer transition-colors group"
-      onClick={handleClick}
-      draggable={!locked && !readOnly}
-      onDragStart={handleDragStart}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation(); // keep the desktop-level menu from opening too
-        setMenu({ x: e.clientX, y: e.clientY });
-      }}
-      title={item.path}
-    >
-      {canRemove && (
-        <button
-          onClick={handleRemove}
-          className="absolute top-0 right-0 hidden group-hover:block text-[10px] leading-none px-1 py-0.5 rounded bg-black/60 text-white hover:bg-black/80"
-          title={managed ? 'Move back to Desktop' : 'Remove from fence'}
-        >
-          {managed ? '↩' : '✕'}
-        </button>
-      )}
-      <div
-        className="mb-1 flex items-center justify-center"
-        style={{ height: iconPx, fontSize: Math.round(iconPx * 0.9) }}
-      >
+  const renderIcon = (px: number) => (
+    <>
         {/* 'folder' = the main process found a folder (Windows would have given a drive icon) */}
         {iconUrl === 'folder' || (!iconUrl && item.type === 'folder') ? (
-          <FolderIcon size={iconPx} tint={tint} strength={tintStrength} />
+          <FolderIcon size={px} tint={tint} strength={tintStrength} />
         ) : iconUrl ? (
-          <span className="relative inline-block" style={{ width: iconPx, height: iconPx, isolation: 'isolate' }}>
-            <img src={iconUrl} alt="" className="object-contain" style={{ width: iconPx, height: iconPx }} draggable={false} />
+          <span className="relative inline-block" style={{ width: px, height: px, isolation: 'isolate' }}>
+            <img src={iconUrl} alt="" className="object-contain" style={{ width: px, height: px }} draggable={false} />
             {/* icon tint: the colour is laid over the icon's own shape only, keeping its light and shade */}
             {tint && tintStrength > 0 && (
               <span
@@ -174,26 +165,11 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId, onOpenFolder, read
         ) : (
           getIcon()
         )}
-      </div>
-      <div
-        className="fence-item-label text-center line-clamp-2 w-full"
-        style={{
-          color: style?.labelColor || '#ffffff',
-          fontSize: style?.itemLabelSize ?? 10,
-          lineHeight: 1.25,
-        }}
-      >
-        {/* a long name may wrap after a dot ("Interview." / "xlsx") rather than mid-word */}
-        {displayName.split(/(?<=\.)/).map((part, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <wbr />}
-            {part}
-          </React.Fragment>
-        ))}
-      </div>
+    </>
+  );
 
-      {/* Item menu. Portaled to <body>: a fixed menu inside a transformed fence would be misplaced. */}
-      {menu &&
+  // Item menu. Portaled to <body>: a fixed menu inside a transformed fence would be misplaced.
+  const menuEl = menu &&
         createPortal(
           <div
             className="fixed inset-0 z-[70]"
@@ -258,7 +234,98 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId, onOpenFolder, read
             </div>
           </div>,
           document.body
+        );
+
+  const openContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // keep the desktop-level menu from opening too
+    setMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  // ---- Details view: one row with Name / Date modified / Type / Size (Folder Portal look) ----
+  if (layout === 'row') {
+    const textColor = style?.labelColor || '#ffffff';
+    const fontSize = Math.max(11, (style?.itemLabelSize ?? 10) + 2);
+    return (
+      <div
+        className={`grid items-center gap-2 px-1.5 rounded cursor-default select-none ${selected ? 'bg-white/20' : 'hover:bg-white/10'}`}
+        style={{ gridTemplateColumns: gridTemplate(columns), color: textColor, fontSize, minHeight: Math.round(fontSize * 1.9) }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect?.(item.id);
+        }}
+        onDoubleClick={handleClick}
+        draggable={!locked && !readOnly}
+        onDragStart={handleDragStart}
+        onContextMenu={(e) => {
+          onSelect?.(item.id);
+          openContextMenu(e);
+        }}
+        title={item.path}
+      >
+        {columns.map((column) =>
+          column === 'name' ? (
+            <div key="name" className="flex items-center gap-1.5 min-w-0">
+              <span className="flex items-center justify-center shrink-0" style={{ width: 18, height: 18, fontSize: 15 }}>
+                {renderIcon(18)}
+              </span>
+              <span className="truncate">{displayName}</span>
+            </div>
+          ) : column === 'modified' ? (
+            <div key="modified" className="truncate opacity-80">{formatModified(item.modified)}</div>
+          ) : column === 'type' ? (
+            <div key="type" className="truncate opacity-80">{typeLabel(item)}</div>
+          ) : (
+            <div key="size" className="truncate opacity-80 text-right">{item.type === 'folder' ? '' : formatSize(item.size)}</div>
+          )
         )}
+        {menuEl}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative flex flex-col items-center justify-start px-0 pt-1.5 pb-1 rounded hover:bg-white/10 cursor-pointer transition-colors group"
+      onClick={handleClick}
+      draggable={!locked && !readOnly}
+      onDragStart={handleDragStart}
+      onContextMenu={openContextMenu}
+      title={item.path}
+    >
+      {canRemove && (
+        <button
+          onClick={handleRemove}
+          className="absolute top-0 right-0 hidden group-hover:block text-[10px] leading-none px-1 py-0.5 rounded bg-black/60 text-white hover:bg-black/80"
+          title={managed ? 'Move back to Desktop' : 'Remove from fence'}
+        >
+          {managed ? '↩' : '✕'}
+        </button>
+      )}
+      <div
+        className="mb-1 flex items-center justify-center"
+        style={{ height: iconPx, fontSize: Math.round(iconPx * 0.9) }}
+      >
+        {renderIcon(iconPx)}
+      </div>
+      <div
+        className="fence-item-label text-center line-clamp-2 w-full"
+        style={{
+          color: style?.labelColor || '#ffffff',
+          fontSize: style?.itemLabelSize ?? 10,
+          lineHeight: 1.25,
+        }}
+      >
+        {/* a long name may wrap after a dot ("Interview." / "xlsx") rather than mid-word */}
+        {displayName.split(/(?<=\.)/).map((part, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <wbr />}
+            {part}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {menuEl}
     </div>
   );
 };

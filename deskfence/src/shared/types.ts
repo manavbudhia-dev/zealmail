@@ -39,6 +39,8 @@ export interface FenceItem {
   icon?: string; // Base64 or path
   position: Position;
   gridPosition?: { row: number; col: number };
+  size?: number; // bytes (from the folder listing; shown in Details view)
+  modified?: number; // last modified, ms
 }
 
 export interface FenceTab {
@@ -87,6 +89,7 @@ export interface Fence {
   dueDate?: number; // Timestamp for deadline-based organization
   category?: string; // Client name, project name, research topic
   privacy?: boolean; // contents masked until the mouse is over the fence
+  view?: 'icons' | 'details'; // default: details for a linked folder, icons otherwise
 }
 
 export interface AppConfig {

@@ -7,6 +7,7 @@ import FolderIcon from './FolderIcon';
 import { createPortal } from 'react-dom';
 import { displayStyle } from '../utils/theme';
 import { usePrivacyStore } from '../store/privacyStore';
+import { columnsFor, gridTemplate, sortItems, type SortKey } from '../utils/details';
 import FolderPortalDialog from './FolderPortalDialog';
 import FenceCustomizationDialog from './FenceCustomizationDialog';
 import FenceRulesDialog from './FenceRulesDialog';
@@ -95,7 +96,15 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
   };
   // the browsed sub-folder shown instead of the linked folder's top level; then the search filter
   const query = (search || '').trim().toLowerCase();
-  const shownItems = (browse ? browse.items : fence.items).filter((item) => !query || item.name.toLowerCase().includes(query));
+  const view = fence.view ?? (fence.portalPath ? 'details' : 'icons');
+  const details = view === 'details';
+  const [sort, setSort] = useState<{ key: SortKey; ascending: boolean }>({ key: 'name', ascending: true });
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const filtered = (browse ? browse.items : fence.items).filter((item) => !query || item.name.toLowerCase().includes(query));
+  // Details view sorts like Explorer (folders first); the icon view keeps the user's own order
+  const shownItems = details ? sortItems(filtered, sort.key, sort.ascending) : filtered;
+  const detailColumns = columnsFor(fence.size.width);
+  const sortBy = (key: SortKey) => setSort((current) => ({ key, ascending: current.key === key ? !current.ascending : true }));
 
   // ---- Privacy: contents masked until the mouse rests on the fence (a quick pass does not reveal) ----
   const privacyAll = usePrivacyStore((state) => state.all);
@@ -483,6 +492,13 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
       { label: 'Rename', run: locked ? lockedAlert('rename it') : () => setIsEditing(true), disabled: tabbed },
       { label: '🎨 Customize…', run: () => setShowCustomization(true) },
       {
+        label: details ? '▦ View as icons' : '☰ View as details',
+        run: () => {
+          updateFence(fence.id, { view: details ? 'icons' : 'details' });
+          saveFences();
+        },
+      },
+      {
         label: fence.privacy ? '✓ Privacy (contents hidden)' : '🙈 Privacy (hide contents)',
         run: () => {
           updateFence(fence.id, { privacy: !fence.privacy });
@@ -618,8 +634,8 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
       >
         {/* Header: centered title (or the tabs), options behind ⋯ / right-click */}
         <div
-          className={`fence-header relative flex items-center ${style.titleAlign === 'left' && !tabbed ? 'justify-start pl-3 pr-8' : 'justify-center'} ${
-            tabbed ? 'pl-1.5 pr-8' : style.titleAlign === 'left' ? '' : 'px-8'
+          className={`fence-header relative flex items-center ${style.titleAlign === 'left' && !tabbed && !details ? 'justify-start pl-3 pr-8' : 'justify-center'} ${
+            tabbed || details ? 'pl-1.5 pr-8' : style.titleAlign === 'left' ? '' : 'px-8'
           } cursor-move select-none`}
           style={{
             color: style.labelColor,
@@ -633,7 +649,40 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
             setMenu({ x: e.clientX, y: e.clientY });
           }}
         >
-          {tabbed ? (
+          {details && !tabbed && !isEditing ? (
+            <div className="flex w-full items-center gap-2 py-1">
+              <div
+                className="flex-1 min-w-0 flex items-center justify-center gap-2 px-2 py-0.5 rounded font-semibold"
+                style={{ backgroundColor: style.tabColor || 'rgba(255, 255, 255, 0.10)' }}
+                onDoubleClick={() => setIsEditing(true)}
+                title="Double-click to rename"
+              >
+                <FolderIcon size={Math.round(style.labelSize * 1.2)} tint={style.iconTint} strength={style.iconTintStrength} />
+                <span className="truncate">{fence.name}</span>
+                {fence.isLocked && <span className="text-[0.7em] opacity-60" title="Locked">🔒</span>}
+              </div>
+              <label
+                className="flex-1 min-w-0 flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-white/5 cursor-text"
+                onMouseDown={(e) => e.stopPropagation()}
+                title={fence.portalPath ? 'Search this folder' : 'Search this fence'}
+              >
+                <span className="opacity-60 text-[0.8em]">🔍</span>
+                <input
+                  value={search || ''}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSearch(null);
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  placeholder="Search"
+                  className="w-full min-w-0 bg-transparent outline-none placeholder:opacity-50"
+                  style={{ color: style.labelColor }}
+                />
+              </label>
+            </div>
+          ) : tabbed ? (
             <div className="flex w-full items-stretch gap-1 py-1">
               {fence.tabs!.map((tab) => {
                 const active = tab.id === currentTabId;
@@ -721,7 +770,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
             </div>
           )}
 
-          <button
+          {!details && <button
             className="fence-actions absolute right-8 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-xs leading-none hover:bg-white/15"
             title={fence.portalPath ? 'Search this folder' : 'Search this fence'}
             onMouseDown={(e) => e.stopPropagation()}
@@ -731,7 +780,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
             }}
           >
             🔍
-          </button>
+          </button>}
           <button
             className="fence-actions absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-base leading-none hover:bg-white/15"
             title="Fence options"
@@ -758,7 +807,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
         )}
 
         {/* Search box */}
-        {!rolledUp && !masked && search !== null && (
+        {!rolledUp && !masked && search !== null && !details && (
           <div className="px-2 pb-1.5">
             <input
               autoFocus
@@ -806,6 +855,48 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
               </span>
             </div>
           )}
+          {details && shownItems.length > 0 && (
+            <div
+              className="sticky top-0 z-[5] grid gap-2 px-1.5 py-1 mb-0.5 text-left border-b border-white/10 backdrop-blur-sm"
+              style={{
+                gridTemplateColumns: gridTemplate(detailColumns),
+                color: style.labelColor,
+                fontSize: Math.max(11, (style.itemLabelSize ?? 10) + 2),
+                backgroundColor: style.backgroundColor,
+              }}
+            >
+              {detailColumns.map((column) => (
+                <button
+                  key={column}
+                  className={`truncate opacity-80 hover:opacity-100 ${column === 'size' ? 'text-right' : 'text-left'} ${
+                    column !== 'name' ? 'border-l border-white/15 pl-2' : ''
+                  }`}
+                  onClick={() => sortBy(column)}
+                  title="Sort"
+                >
+                  {{ name: 'Name', modified: 'Date modified', type: 'Type', size: 'Size' }[column]}
+                  {sort.key === column ? (sort.ascending ? ' ▴' : ' ▾') : ''}
+                </button>
+              ))}
+            </div>
+          )}
+          {details ? (
+            <div className="flex flex-col" onClick={() => setSelectedItemId(null)}>
+              {shownItems.map((item) => (
+                <FenceItem
+                  key={item.id}
+                  item={item}
+                  fenceId={fence.id}
+                  layout="row"
+                  columns={detailColumns}
+                  selected={selectedItemId === item.id}
+                  onSelect={setSelectedItemId}
+                  onOpenFolder={fence.portalPath ? (folder) => openSubfolder(folder.path) : undefined}
+                  readOnly={!!browse}
+                />
+              ))}
+            </div>
+          ) : (
           <div
             className="grid gap-x-0 gap-y-1"
             style={{
@@ -824,6 +915,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
               />
             ))}
           </div>
+          )}
 
           {shownItems.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-xs gap-1 opacity-50" style={{ color: style.labelColor }}>
