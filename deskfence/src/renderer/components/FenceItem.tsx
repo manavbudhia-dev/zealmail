@@ -9,10 +9,18 @@ import { displayStyle } from '../utils/theme';
 interface FenceItemProps {
   item: FenceItemType;
   fenceId: string;
+  /** Folder Portals: a click on a folder opens it INSIDE the fence instead of in File Explorer */
+  onOpenFolder?: (item: FenceItemType) => void;
+  /** An item of a browsed sub-folder: it is not stored in the fence, so it cannot be moved or removed */
+  readOnly?: boolean;
 }
 
-const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
+const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId, onOpenFolder, readOnly = false }) => {
   const handleClick = () => {
+    if (onOpenFolder && item.type === 'folder') {
+      onOpenFolder(item);
+      return;
+    }
     window.electronAPI.openFile(item.path);
   };
 
@@ -48,7 +56,7 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
   // Windows never shows the .lnk / .url of a shortcut, so neither do we
   const displayName = item.name.replace(/\.(lnk|url)$/i, '') || item.name;
 
-  const canRemove = !locked && !(fence?.portalPath && !managed);
+  const canRemove = !readOnly && !locked && !(fence?.portalPath && !managed);
 
   // Managed item (it was moved into the fence): put the real file back on the Desktop.
   // Anything else (a reference or a linked-folder item): just take it out of the fence view.
@@ -115,7 +123,7 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
     <div
       className="relative flex flex-col items-center justify-start px-0 pt-1.5 pb-1 rounded hover:bg-white/10 cursor-pointer transition-colors group"
       onClick={handleClick}
-      draggable={!locked}
+      draggable={!locked && !readOnly}
       onDragStart={handleDragStart}
       onContextMenu={(e) => {
         e.preventDefault();

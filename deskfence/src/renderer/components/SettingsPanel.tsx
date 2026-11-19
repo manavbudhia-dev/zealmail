@@ -12,13 +12,37 @@ interface SettingsPanelProps {
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose }) => {
   const { fences, setFences, saveFences } = useFenceStore();
   const [settings, setSettings] = useState({
-    globalHotkey: 'CommandOrControl+Space',
+    globalHotkey: '',
     autoStart: false,
     theme: 'auto' as 'light' | 'dark' | 'auto',
     hideDesktopIcons: false,
     dropFolderToFence: true,
     drawToCreate: true,
+    quickHide: true,
+    quickHideIcons: true,
+    winSpacePeek: true,
   });
+
+  // these apply right away, like the theme
+  const saveNow = async (updates: Record<string, boolean>) => {
+    setSettings((current) => ({ ...current, ...updates }));
+    await window.electronAPI.saveSettings(updates);
+  };
+  const toggleRow = (label: string, hint: string, key: 'quickHide' | 'quickHideIcons' | 'winSpacePeek', disabled = false) => (
+    <div className={`flex items-center justify-between ${disabled ? 'opacity-50' : ''}`}>
+      <div>
+        <label className="text-sm text-gray-300">{label}</label>
+        <p className="text-xs text-gray-400">{hint}</p>
+      </div>
+      <input
+        type="checkbox"
+        disabled={disabled}
+        checked={settings[key] !== false}
+        onChange={(e) => saveNow({ [key]: e.target.checked })}
+        className="w-5 h-5"
+      />
+    </div>
+  );
   const [iconsMessage, setIconsMessage] = useState<string | null>(null);
   const [iconsBusy, setIconsBusy] = useState(false);
 
@@ -167,19 +191,23 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-gray-300 mb-2">
-                  Global Hotkey
+                  Extra Peek hotkey (optional)
                 </label>
                 <input
                   type="text"
                   value={settings.globalHotkey}
                   onChange={(e) => setSettings({ ...settings, globalHotkey: e.target.value })}
                   className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 outline-none"
-                  placeholder="CommandOrControl+Space"
+                  placeholder="e.g. Control+Alt+Space (empty = none)"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Hotkey to toggle peek mode
+                  Win + Space already opens Peek. Add a second key here if you like; avoid Ctrl+Space, apps use it.
                 </p>
               </div>
+
+              {toggleRow('Peek with Win + Space', 'Shows your fences above the open windows; Esc or Win + Space again goes back', 'winSpacePeek')}
+              {toggleRow('Quick-hide: double-click the Desktop', 'Double-click empty Desktop space to hide every fence; double-click again to bring them back', 'quickHide')}
+              {toggleRow('Quick-hide hides Desktop icons too', 'The real Desktop icons disappear and come back together with the fences', 'quickHideIcons', settings.quickHide === false)}
 
               <div className="flex items-center justify-between">
                 <div>

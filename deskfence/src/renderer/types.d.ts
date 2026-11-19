@@ -79,6 +79,9 @@ declare global {
 
       // Peek mode
       togglePeek: () => void;
+      endPeek: () => void;
+      onPeekChanged: (callback: (peeking: boolean) => void) => () => void;
+      toggleQuickHide: () => void;
       // Each subscription returns an unsubscribe function
       onPeekStateChange: (callback: (isPeekMode: boolean) => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;

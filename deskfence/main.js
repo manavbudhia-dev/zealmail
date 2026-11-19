@@ -29,13 +29,16 @@ const { spawn: spawnProcess } = require('child_process');
 // Config
 // ---------------------------------------------------------------------------
 const DEFAULT_SETTINGS = {
-  globalHotkey: 'CommandOrControl+Space',
+  globalHotkey: '', // optional extra Peek hotkey (Win + Space always works while winSpacePeek is on)
   autoStart: false,
   theme: 'auto',
   hideDesktopIcons: false,
   dropFolderToFence: true, // drag a folder from File Explorer onto the bare Desktop => folder fence
   drawToCreate: true, // right-click + drag on empty Desktop space draws a new fence
   privacyMode: false, // every fence's contents are masked until the mouse is over it
+  quickHide: true, // double-click empty Desktop space hides / shows every fence
+  quickHideIcons: true, // ...and the Desktop icons with them
+  winSpacePeek: true, // Win + Space shows the fences above the open windows
 };
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
 const DIST_INDEX = path.join(__dirname, 'dist', 'renderer', 'index.html');
@@ -84,7 +87,8 @@ const useDist = app.isPackaged || process.argv.includes('--dist');
 const windows = new Map();
 let tray = null;
 let iconsHiddenByUs = false;
-let isPeekMode = false;
+let isHidden = false; // Quick-hide: every fence hidden
+let isPeeking = false; // Peek: fences shown above the open windows
 let isQuitting = false;
 let currentHotkey = null;
 
@@ -168,7 +172,10 @@ function writeFencesList(list) {
 }
 
 function getSettings() {
-  return { ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) };
+  const settings = { ...DEFAULT_SETTINGS, ...readJson('settings.json', {}) };
+  // the old default grabbed Ctrl+Space in every app (code completion, input methods): Win + Space replaces it
+  if (settings.globalHotkey === 'CommandOrControl+Space') settings.globalHotkey = '';
+  return settings;
 }
 
 // ---------------------------------------------------------------------------
@@ -679,12 +686,14 @@ function registerIpc() {
     if (typeof filePath === 'string' && /^shell:[\w .\\-]+$/i.test(filePath)) {
       try {
         spawnProcess('explorer.exe', [filePath], { detached: true, stdio: 'ignore' }).unref();
+        if (isPeeking) setPeek(false);
         return { success: true };
       } catch (error) {
         return { success: false, error: String((error && error.message) || error) };
       }
     }
     const error = await shell.openPath(filePath); // returns '' on success
+    if (!error && isPeeking) setPeek(false); // what you opened comes to the front, the fences go back down
     return { success: !error, error: error || undefined };
   });
 
@@ -815,7 +824,9 @@ function registerIpc() {
       })
     )
   );
-  ipcMain.on(CH.TOGGLE_PEEK, () => togglePeekMode());
+  ipcMain.on(CH.TOGGLE_PEEK, () => togglePeek());
+  ipcMain.on('toggle-quick-hide', () => toggleQuickHide());
+  ipcMain.on('end-peek', () => setPeek(false));
   ipcMain.on(CH.MINIMIZE_WINDOW, (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.minimize();
@@ -831,8 +842,9 @@ function registerHotkey(hotkey) {
     globalShortcut.unregister(currentHotkey);
     currentHotkey = null;
   }
+  if (!hotkey) return true; // no extra hotkey wanted
   try {
-    if (globalShortcut.register(hotkey, togglePeekMode)) {
+    if (globalShortcut.register(hotkey, () => togglePeek())) {
       currentHotkey = hotkey;
       return true;
     }
@@ -847,13 +859,8 @@ async function applySettings(settings) {
   // native menus/dialogs and prefers-color-scheme follow the chosen theme
   nativeTheme.themeSource = settings.theme === 'light' || settings.theme === 'dark' ? settings.theme : 'system';
 
-  if (settings.globalHotkey !== currentHotkey) {
-    // if the new hotkey fails, fall back to the default so peek mode never becomes unreachable
-    if (!registerHotkey(settings.globalHotkey) && settings.globalHotkey !== DEFAULT_SETTINGS.globalHotkey) {
-      registerHotkey(DEFAULT_SETTINGS.globalHotkey);
-    }
-  }
-  applyDesktopGestures(settings.dropFolderToFence !== false, settings.drawToCreate !== false);
+  if ((settings.globalHotkey || null) !== currentHotkey) registerHotkey(settings.globalHotkey);
+  applyDesktopGestures(settings);
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: !!settings.autoStart });
   }
@@ -959,11 +966,43 @@ let drawEnabled = true;
 let draw = null; // { start, entry, timer } while a fence is being drawn
 let rightPressPoint = null;
 const DRAW_FLAG_PATH = path.join(os.tmpdir(), 'deskfence-draw-' + process.pid + '.on');
+const QUICK_HIDE_FLAG_PATH = path.join(os.tmpdir(), 'deskfence-quickhide-' + process.pid + '.on');
+const PEEK_FLAG_PATH = path.join(os.tmpdir(), 'deskfence-peek-' + process.pid + '.on');
+const HELPER_COMMAND_PATH = path.join(os.tmpdir(), 'deskfence-command-' + process.pid + '.txt');
+let quickHideEnabled = true;
+let winSpaceEnabled = true;
+
+function setFlagFile(file, on) {
+  try {
+    if (on && !isQuitting) fs.writeFileSync(file, '1');
+    else fs.rmSync(file, { force: true });
+  } catch (_) {
+    /* best effort */
+  }
+}
+
+// Tells the helper to put our windows just above the Desktop (below every app window)
+function sinkWindows() {
+  if (process.platform !== 'win32' || !dragWatch) return;
+  const handles = allWindows()
+    .filter((win) => win.isVisible())
+    .map((win) => {
+      const buf = win.getNativeWindowHandle();
+      return buf.length >= 8 ? buf.readBigUInt64LE(0).toString() : String(buf.readUInt32LE(0));
+    });
+  if (handles.length === 0) return;
+  try {
+    fs.writeFileSync(HELPER_COMMAND_PATH + '.tmp', 'SINK ' + handles.join(' '));
+    fs.renameSync(HELPER_COMMAND_PATH + '.tmp', HELPER_COMMAND_PATH);
+  } catch (_) {
+    /* the fences simply stay where they are */
+  }
+}
 
 // The helper only arms the gesture while this file exists, so while the fences are hidden (Peek,
 // "Hide") the Desktop's own right-click menu is never swallowed.
 function updateDrawFlag() {
-  const on = drawEnabled && !isPeekMode && !isQuitting && allWindows().some((win) => win.isVisible());
+  const on = drawEnabled && !isHidden && !isPeeking && !isQuitting && allWindows().some((win) => win.isVisible());
   try {
     if (on) fs.writeFileSync(DRAW_FLAG_PATH, '1');
     else fs.rmSync(DRAW_FLAG_PATH, { force: true });
@@ -1030,8 +1069,12 @@ function onDrawState(state) {
 function onDragState(state) {
   lastDragHeartbeat = Date.now();
   if (state.event) {
-    endDraw(state.event === 'draw-end');
-    rightPressPoint = null;
+    if (state.event === 'quick-hide') toggleQuickHide();
+    else if (state.event === 'peek') togglePeek();
+    else {
+      endDraw(state.event === 'draw-end');
+      rightPressPoint = null;
+    }
     return;
   }
   onDrawState(state);
@@ -1050,16 +1093,29 @@ function onDragState(state) {
 }
 
 // One helper serves both "drop a folder on the Desktop" and "draw a fence"; it runs while either is on.
-function applyDesktopGestures(dropFolder, drawFence) {
+function applyDesktopGestures(settings) {
+  const dropFolder = settings.dropFolderToFence !== false;
+  const drawFence = settings.drawToCreate !== false;
+  quickHideEnabled = settings.quickHide !== false;
+  winSpaceEnabled = settings.winSpacePeek !== false;
   dropFolderEnabled = dropFolder;
   drawEnabled = drawFence;
   if (!dropFolder) setDragLatch(false);
   if (!drawFence) endDraw(false);
   updateDrawFlag();
-  if ((dropFolder || drawFence) && !dragWatch) {
-    dragWatch = createDragWatch({ onState: onDragState, drawFlagPath: DRAW_FLAG_PATH });
+  setFlagFile(QUICK_HIDE_FLAG_PATH, quickHideEnabled);
+  setFlagFile(PEEK_FLAG_PATH, winSpaceEnabled);
+  const needed = dropFolder || drawFence || quickHideEnabled || winSpaceEnabled;
+  if (needed && !dragWatch) {
+    dragWatch = createDragWatch({
+      onState: onDragState,
+      drawFlagPath: DRAW_FLAG_PATH,
+      quickHideFlagPath: QUICK_HIDE_FLAG_PATH,
+      peekFlagPath: PEEK_FLAG_PATH,
+      commandPath: HELPER_COMMAND_PATH,
+    });
     if (!dragWatch.start()) dragWatch = null; // not Windows
-  } else if (!dropFolder && !drawFence && dragWatch) {
+  } else if (!needed && dragWatch) {
     dragWatch.stop();
     dragWatch = null;
   }
@@ -1164,7 +1220,8 @@ function createWindowFor(display) {
   win.once('ready-to-show', () => {
     if (win.isDestroyed()) return;
     win.setBounds(area); // re-apply after creation: fixes size on mixed-DPI monitors
-    if (!isPeekMode) win.show(); // a monitor plugged in during Peek stays hidden until Peek ends
+    if (!isHidden) win.showInactive(); // a monitor plugged in during Quick-hide stays hidden until it ends
+    sinkWindows();
     updateDrawFlag();
   });
 
@@ -1182,6 +1239,8 @@ function createWindowFor(display) {
       hideAllWindows();
     }
   });
+
+  win.on('blur', endPeekIfFocusLeft);
 
   win.on('closed', () => {
     for (const [id, e] of windows) if (e.win === win) windows.delete(id);
@@ -1245,9 +1304,10 @@ function hideAllWindows() {
 
 function showWindow() {
   // Anything that explicitly brings the app back (tray, second launch, activate) ends Peek
-  if (isPeekMode) {
-    isPeekMode = false;
+  if (isHidden) {
+    isHidden = false;
     sendToAll(CH.SET_PEEK_STATE, false);
+    syncQuickHideIcons(false);
   }
   if (windows.size === 0) {
     createWindows();
@@ -1260,32 +1320,104 @@ function showWindow() {
 }
 
 // ---------------------------------------------------------------------------
-// Peek mode
+// Quick-hide: every fence (and, if wanted, the Desktop icons) disappears; the wallpaper is left.
+// Double-click empty Desktop space, the tray, or the page's menu toggles it.
 // ---------------------------------------------------------------------------
-function setPeekMode(value) {
-  isPeekMode = value;
+let iconsHiddenByQuickHide = false;
+let quickHideIconsWanted = false;
+let quickHideIconsQueue = Promise.resolve();
+
+// Icons follow the LATEST wish, so a fast double toggle can never leave them hidden
+function syncQuickHideIcons(hidden) {
+  quickHideIconsWanted = hidden;
+  quickHideIconsQueue = quickHideIconsQueue
+    .then(async () => {
+      const settings = getSettings();
+      const want = quickHideIconsWanted && settings.quickHideIcons !== false && !settings.hideDesktopIcons;
+      if (want && !iconsHiddenByQuickHide) {
+        const result = await desktopIcons.setHidden(true);
+        if (result.success && result.changed) iconsHiddenByQuickHide = true;
+      } else if (!want && iconsHiddenByQuickHide) {
+        const result = await desktopIcons.setHidden(false);
+        if (result.success) iconsHiddenByQuickHide = false;
+      }
+    })
+    .catch(() => {});
+}
+
+function setQuickHidden(value) {
+  if (value && isPeeking) setPeek(false);
+  isHidden = value;
+  syncQuickHideIcons(value);
   if (windows.size === 0) {
-    if (!isPeekMode) createWindows();
+    if (!isHidden) createWindows();
     return;
   }
 
   for (const win of allWindows()) {
     win.setAlwaysOnTop(false); // never leave a window pinned above other apps
-    if (isPeekMode) {
-      win.hide(); // Peek: every fence on every monitor disappears, only the wallpaper is left
+    if (isHidden) {
+      win.hide();
     } else if (!win.isVisible()) {
-      win.showInactive(); // back from Peek without stealing focus from the app you are using
+      win.showInactive(); // back without stealing focus from the app you are using
     }
   }
-  sendToAll(CH.SET_PEEK_STATE, isPeekMode);
-  if (isPeekMode) endDraw(false);
+  if (!isHidden) sinkWindows(); // back ON the Desktop, not over the apps
+  sendToAll(CH.SET_PEEK_STATE, isHidden);
+  if (isHidden) endDraw(false);
   updateDrawFlag();
 }
 
-function togglePeekMode() {
-  // Decide from what is actually on screen, so the hotkey also works after "Hide" (X button)
+function toggleQuickHide() {
+  // Decide from what is actually on screen, so it also works after "Hide" (X button)
   const anyVisible = allWindows().some((win) => win.isVisible());
-  setPeekMode(anyVisible);
+  setQuickHidden(anyVisible);
+}
+
+// ---------------------------------------------------------------------------
+// Peek (Win + Space): the fences come up ABOVE the open windows over a dimmed screen, so Desktop
+// files are reachable without minimizing anything. Esc, the hotkey again, a click on the dimmed
+// part, opening an item or switching to another app ends it.
+// ---------------------------------------------------------------------------
+function setPeek(on) {
+  if (on === isPeeking) return;
+  if (on && windows.size === 0) createWindows();
+  isPeeking = on;
+  if (on) {
+    if (isHidden) {
+      isHidden = false;
+      syncQuickHideIcons(false);
+      sendToAll(CH.SET_PEEK_STATE, false);
+    }
+    for (const win of allWindows()) {
+      win.setAlwaysOnTop(true, 'pop-up-menu');
+      if (!win.isVisible()) win.showInactive();
+      win.moveTop();
+    }
+    // keyboard focus where the mouse is, so Esc works there
+    const entry = entryAt(screen.getCursorScreenPoint());
+    const target = entry && !entry.win.isDestroyed() ? entry.win : controllerWindow();
+    if (target) target.focus();
+  } else {
+    for (const win of allWindows()) win.setAlwaysOnTop(false);
+    sinkWindows(); // back down onto the Desktop, below the apps
+  }
+  sendToAll('peek-changed', isPeeking);
+  endDraw(false);
+  updateDrawFlag();
+}
+
+function togglePeek() {
+  setPeek(!isPeeking);
+}
+
+// Switching to another app ends Peek (focus moving between our own monitor windows does not)
+function endPeekIfFocusLeft() {
+  if (!isPeeking) return;
+  setTimeout(() => {
+    const focused = BrowserWindow.getFocusedWindow();
+    if (!focused || !allWindows().includes(focused)) setPeek(false);
+  }, 80);
 }
 
 // ---------------------------------------------------------------------------
@@ -1328,7 +1460,8 @@ function createTray() {
   }
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show/Hide Fences', click: () => togglePeekMode() },
+    { label: 'Show/Hide Fences (double-click Desktop)', click: () => toggleQuickHide() },
+    { label: 'Peek: fences above windows (Win+Space)', click: () => setPeek(true) },
     {
       id: 'privacy',
       label: 'Privacy mode (mask fence contents)',
@@ -1354,7 +1487,7 @@ function createTray() {
   trayMenu = contextMenu;
   tray.setToolTip('DeskFence - Desktop Organizer');
   tray.setContextMenu(contextMenu);
-  tray.on('double-click', () => togglePeekMode());
+  tray.on('double-click', () => toggleQuickHide());
 }
 
 // ---------------------------------------------------------------------------
@@ -1390,6 +1523,9 @@ if (!app.requestSingleInstanceLock()) {
     isQuitting = true;
     endDraw(false);
     updateDrawFlag(); // removes the flag file
+    setFlagFile(QUICK_HIDE_FLAG_PATH, false);
+    setFlagFile(PEEK_FLAG_PATH, false);
+    try { fs.rmSync(HELPER_COMMAND_PATH, { force: true }); } catch (_) { /* gone */ }
     if (dragWatch) dragWatch.stop();
     for (const folderPath of [...watchers.keys()]) unwatchFolder(folderPath, true);
   });
@@ -1398,7 +1534,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('will-quit', (event) => {
     globalShortcut.unregisterAll();
     // Never leave the user's Desktop icons hidden after DeskFence has closed
-    if (iconsHiddenByUs && !restoringIcons) {
+    if ((iconsHiddenByUs || iconsHiddenByQuickHide) && !restoringIcons) {
       restoringIcons = true;
       event.preventDefault();
       desktopIcons
@@ -1406,6 +1542,7 @@ if (!app.requestSingleInstanceLock()) {
         .catch(() => {})
         .finally(() => {
           iconsHiddenByUs = false;
+          iconsHiddenByQuickHide = false;
           app.quit();
         });
     }

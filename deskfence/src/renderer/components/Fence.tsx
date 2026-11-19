@@ -13,6 +13,7 @@ import FenceRulesDialog from './FenceRulesDialog';
 import { useDisplayStore, nextDisplayId } from '../store/displayStore';
 import { addTab, switchTab, renameTab, removeTab, moveItemToTab, hasTabs, activeTabId, allFenceItems } from '../utils/fence-tabs';
 import { filesToItems } from '../utils/portal';
+import type { FenceItem as FenceItemType } from '../../shared/types';
 import {
   getFenceFolder,
   refreshPortalFence,
@@ -59,6 +60,42 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
   // fences still on the old blue default are drawn with the current default look (nothing is saved)
   const style = displayStyle(fence.style);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // ---- Search (any fence) and browsing into sub-folders (Folder Portals). View state only. ----
+  const [search, setSearch] = useState<string | null>(null);
+  const [browse, setBrowse] = useState<{ path: string; items: FenceItemType[] } | null>(null);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+  const browseTicket = useRef(0);
+  useEffect(() => {
+    setBrowse(null); // a different (or no) linked folder: back to its top level
+    setBrowseError(null);
+  }, [fence.portalPath]);
+
+  const openSubfolder = async (folderPath: string) => {
+    const ticket = ++browseTicket.current;
+    try {
+      const files = await window.electronAPI.getFilesInFolder(folderPath);
+      if (ticket !== browseTicket.current) return; // a newer navigation won
+      setBrowse({ path: folderPath, items: filesToItems(files) });
+      setBrowseError(null);
+    } catch (error) {
+      if (ticket === browseTicket.current) setBrowseError(`Cannot open ${baseName(folderPath)}`);
+    }
+  };
+  const goUp = () => {
+    if (!browse || !fence.portalPath) return;
+    const parent = browse.path.replace(/[\\/]+$/, '').replace(/[\\/][^\\/]+$/, '');
+    const atTop = parent.replace(/[\\/]+$/, '').toLowerCase() === fence.portalPath.replace(/[\\/]+$/, '').toLowerCase();
+    if (atTop || parent.length < fence.portalPath.length) {
+      browseTicket.current++;
+      setBrowse(null);
+    } else {
+      openSubfolder(parent);
+    }
+  };
+  // the browsed sub-folder shown instead of the linked folder's top level; then the search filter
+  const query = (search || '').trim().toLowerCase();
+  const shownItems = (browse ? browse.items : fence.items).filter((item) => !query || item.name.toLowerCase().includes(query));
 
   // ---- Privacy: contents masked until the mouse rests on the fence (a quick pass does not reveal) ----
   const privacyAll = usePrivacyStore((state) => state.all);
@@ -685,6 +722,17 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
           )}
 
           <button
+            className="fence-actions absolute right-8 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-xs leading-none hover:bg-white/15"
+            title={fence.portalPath ? 'Search this folder' : 'Search this fence'}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSearch(search === null ? '' : null);
+            }}
+          >
+            🔍
+          </button>
+          <button
             className="fence-actions absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-base leading-none hover:bg-white/15"
             title="Fence options"
             onMouseDown={(e) => e.stopPropagation()}
@@ -709,6 +757,42 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
           </div>
         )}
 
+        {/* Search box */}
+        {!rolledUp && !masked && search !== null && (
+          <div className="px-2 pb-1.5">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearch(null);
+              }}
+              placeholder={fence.portalPath ? 'Search this folder…' : 'Search this fence…'}
+              className="w-full px-2 py-1 rounded bg-black/30 border border-white/15 text-xs outline-none focus:border-white/40"
+              style={{ color: style.labelColor }}
+            />
+          </div>
+        )}
+
+        {/* Folder Portal: inside a sub-folder */}
+        {!rolledUp && !masked && (browse || browseError) && (
+          <div className="flex items-center gap-1.5 px-2 pb-1 text-[11px]" style={{ color: style.labelColor }}>
+            <button className="px-1.5 rounded bg-white/10 hover:bg-white/20" onClick={goUp} title="Back">‹ Back</button>
+            <span className="truncate opacity-80" title={browse?.path}>
+              {browseError || (browse && baseName(browse.path))}
+            </span>
+            {browse && (
+              <button
+                className="ml-auto px-1.5 rounded hover:bg-white/15 opacity-70 hover:opacity-100"
+                title="Open this folder in File Explorer"
+                onClick={() => window.electronAPI.openFile(browse.path)}
+              >
+                ↗
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Items (masked in privacy mode until the mouse is over the fence) */}
         <div
           className={`fence-body relative flex-1 min-h-0 px-1.5 pb-1.5 ${masked ? 'fence-masked overflow-hidden' : 'overflow-auto'} ${fence.autoRollup ? 'fence-dropdown' : ''}`}
@@ -730,14 +814,20 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
                 : `repeat(auto-fill, minmax(${getIconSize(style.iconSize)}px, 1fr))`,
             }}
           >
-            {fence.items.map((item) => (
-              <FenceItem key={item.id} item={item} fenceId={fence.id} />
+            {shownItems.map((item) => (
+              <FenceItem
+                key={item.id}
+                item={item}
+                fenceId={fence.id}
+                onOpenFolder={fence.portalPath ? (folder) => openSubfolder(folder.path) : undefined}
+                readOnly={!!browse}
+              />
             ))}
           </div>
 
-          {fence.items.length === 0 && (
+          {shownItems.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-xs gap-1 opacity-50" style={{ color: style.labelColor }}>
-              {fence.portalPath ? 'This folder is empty' : 'Drop files here'}
+              {query ? 'Nothing matches' : fence.portalPath || browse ? 'This folder is empty' : 'Drop files here'}
             </div>
           )}
         </div>

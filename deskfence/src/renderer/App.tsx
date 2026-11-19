@@ -26,6 +26,7 @@ function App() {
   const { fences, loadFences, saveFences, setPeekMode, addFence, applyIncoming, setRenameFence } = useFenceStore();
   const info = useDisplayStore((state) => state.info);
   const privacyAll = usePrivacyStore((state) => state.all);
+  const [peeking, setPeeking] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAutomation, setShowAutomation] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
@@ -171,6 +172,9 @@ function App() {
         usePrivacyStore.getState().setAll(!!settings?.privacyMode);
       }),
 
+      // Peek (Win + Space): fences above the open windows over a dimmed screen
+      window.electronAPI.onPeekChanged((on) => setPeeking(!!on)),
+
       // Right-click + drag on the Desktop (seen by the main process): live outline, then the fence
       window.electronAPI.onDrawPreview((rect) => setDrawPreview(rect)),
       window.electronAPI.onDrawFence((rect) => {
@@ -258,6 +262,15 @@ function App() {
       showNotice(`Could not organize the Desktop: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
+
+  useEffect(() => {
+    if (!peeking) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') window.electronAPI.endPeek();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [peeking]);
 
   // "New fence" from the menu / tray: the next drag on this monitor draws it
   const startDrawMode = () => {
@@ -425,6 +438,18 @@ function App() {
       onDropCapture={handleDesktopDropCapture}
       onDrop={handleDesktopDrop}
     >
+      {/* Peek: the open windows are dimmed behind the fences; clicking the dimmed part goes back */}
+      {peeking && (
+        <div className="fixed inset-0 bg-black/45" onMouseDown={() => window.electronAPI.endPeek()}>
+          <div
+            className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded text-xs pointer-events-none"
+            style={{ color: '#ffffff', backgroundColor: 'rgba(0, 0, 0, 0.6)' }} // fixed colours: the light theme restyles .text-white
+          >
+            Peek · Esc, Win+Space or a click here to go back
+          </div>
+        </div>
+      )}
+
       {/* Render all fences */}
       {/* nothing is drawn until we know which monitor this window is on (no flash of every fence) */}
       {info &&

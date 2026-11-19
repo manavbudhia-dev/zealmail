@@ -10,13 +10,16 @@ const FENCES_KEY = 'deskfence-fences';
 const SETTINGS_KEY = 'deskfence-settings';
 
 const DEFAULT_SETTINGS = {
-  globalHotkey: 'CommandOrControl+Space',
+  globalHotkey: '',
   autoStart: false,
   theme: 'auto' as 'light' | 'dark' | 'auto',
   hideDesktopIcons: false,
   dropFolderToFence: true,
   drawToCreate: true,
   privacyMode: false,
+  quickHide: true,
+  quickHideIcons: true,
+  winSpacePeek: true,
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -87,6 +90,9 @@ export function installBrowserShim(): void {
     onDrawFence: noSubscription,
 
     togglePeek: () => {},
+    endPeek: () => {},
+    onPeekChanged: noSubscription,
+    toggleQuickHide: () => {},
     onPeekStateChange: noSubscription,
     onOpenSettings: noSubscription,
     onTrayAction: noSubscription,

@@ -41,7 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDrawFence: (callback) => subscribe('draw-fence', callback),
 
   // Peek mode
-  togglePeek: () => ipcRenderer.send('toggle-peek'),
+  togglePeek: () => ipcRenderer.send('toggle-peek'), // fences above the open windows
+  endPeek: () => ipcRenderer.send('end-peek'),
+  onPeekChanged: (callback) => subscribe('peek-changed', callback),
+  toggleQuickHide: () => ipcRenderer.send('toggle-quick-hide'), // hide / show every fence
   onPeekStateChange: (callback) => subscribe('set-peek-state', callback),
   onOpenSettings: (callback) => subscribe('open-settings', callback),
   onTrayAction: (callback) => subscribe('tray-action', callback),

@@ -74,10 +74,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       {item('⚙️ Settings', onOpenSettings)}
       <div className="my-1 border-t border-gray-700" />
       {item(privacyOn ? '✓ Privacy mode' : '🙈 Privacy mode', onTogglePrivacy, privacyOn ? 'on' : 'mask all')}
-      {item('👁 Peek (hide all fences)', () => {
+      {item('🫥 Hide all fences', () => {
         onClose();
-        window.electronAPI.togglePeek();
-      })}
+        window.electronAPI.toggleQuickHide();
+      }, 'double-click Desktop')}
       {item('🙈 Hide DeskFence', () => {
         onClose();
         window.electronAPI.closeWindow();

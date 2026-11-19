@@ -21,6 +21,13 @@
 //               closes the Desktop's right-click menu that Windows opens on release)
 //   X           the right button was released without drawing (a normal right-click: menu untouched)
 //
+//   Q           a double-click on EMPTY Desktop space: Quick-hide (hide / show every fence)
+//   P           Win + Space: Peek (fences above the open windows)
+//
+// Each of those only happens while its flag file exists (main creates it while the feature is on).
+// Main can also ask for one thing through a command file:
+//   SINK <hwnd> <hwnd>...   put these (DeskFence) windows just above the Desktop, below every app window
+//
 // Drawing only arms while the flag file passed to buildScript exists (main creates it while the fences
 // are on screen), so a hidden DeskFence never swallows the Desktop's right-click menu.
 //
@@ -31,7 +38,7 @@ const { encodeCommand } = require('./desktop-icons');
 // PowerShell single-quoted string: a ' is written as ''
 const psQuote = (text) => "'" + String(text || '').replace(/'/g, "''") + "'";
 
-const buildScript = (parentPid, drawFlagPath) => `
+const buildScript = (parentPid, drawFlagPath, extra = {}) => `
 $ErrorActionPreference = 'Stop'
 $sig = @'
 using System;
@@ -48,6 +55,13 @@ public static class DeskFenceDrag {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string cls, string title);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] public static extern uint GetDoubleClickTime();
+  [DllImport("user32.dll")] public static extern IntPtr GetTopWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint cmd);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int index);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
   static string RootClassUnderCursor() {
     POINT p;
@@ -70,6 +84,28 @@ public static class DeskFenceDrag {
     return (GetAsyncKeyState(vk) & 0x8000) != 0 ? 1 : 0;
   }
   public static POINT Pos() { POINT p; GetCursorPos(out p); return p; }
+  public static int WinSpace() {
+    bool win = (GetAsyncKeyState(0x5B) & 0x8000) != 0 || (GetAsyncKeyState(0x5C) & 0x8000) != 0;
+    return win && (GetAsyncKeyState(0x20) & 0x8000) != 0 ? 1 : 0;
+  }
+  static string ClassOf(IntPtr h) { StringBuilder sb = new StringBuilder(64); GetClassName(h, sb, 64); return sb.ToString(); }
+  // Puts our windows just above the Desktop: directly below the LOWEST normal app window, so the
+  // fences sit on the Desktop instead of floating over apps (after Peek, after Quick-hide shows them).
+  public static void Sink(long[] handles, uint ownPid) {
+    IntPtr lowest = IntPtr.Zero;
+    for (IntPtr h = GetTopWindow(IntPtr.Zero); h != IntPtr.Zero; h = GetWindow(h, 2)) {
+      if (!IsWindowVisible(h) || IsIconic(h)) continue;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (pid == ownPid) continue;
+      long ex = GetWindowLongPtr(h, -20).ToInt64();
+      if ((ex & 0x8) != 0 || (ex & 0x80) != 0) continue; // topmost / tool windows live elsewhere
+      string c = ClassOf(h);
+      if (c == "Progman" || c == "WorkerW" || c == "Shell_TrayWnd" || c == "Shell_SecondaryTrayWnd") continue;
+      lowest = h;
+    }
+    if (lowest == IntPtr.Zero) return; // no app windows: nothing to go below
+    foreach (long v in handles) SetWindowPos(new IntPtr(v), lowest, 0, 0, 0, 0, 0x0213); // NOSIZE|NOMOVE|NOACTIVATE|NOOWNERZORDER
+  }
   // After a draw, Explorer opens its Desktop right-click menu on release: close it (Escape) once it shows.
   public static void CloseShellMenu() {
     for (int i = 0; i < 25; i++) {
@@ -103,6 +139,16 @@ function Test-EmptyDesktop($pt) {
 
 $parent = ${Number(parentPid) || 0}
 $drawFlag = ${psQuote(drawFlagPath)}
+$qhFlag = ${psQuote(extra.quickHideFlagPath)}
+$peekFlag = ${psQuote(extra.peekFlagPath)}
+$cmdFile = ${psQuote(extra.commandPath)}
+$dblMs = [DeskFenceDrag]::GetDoubleClickTime()
+$clock = [Diagnostics.Stopwatch]::StartNew()
+$lEmpty = $false
+$lP0 = [DeskFenceDrag]::Pos()
+$lastClickAt = -100000
+$lastClickPos = $lP0
+$prevWs = 0
 $armed = $false
 $prevDown = 0
 $prevR = 0
@@ -151,20 +197,69 @@ while ($true) {
   } else {
     $armed = $false
   }
+  # ---- Quick-hide: double-click on EMPTY Desktop space ----
+  if ($d -eq 1 -and $prevDown -eq 0) {
+    $lEmpty = $false
+    if ($qhFlag -ne '' -and (Test-Path -LiteralPath $qhFlag) -and [DeskFenceDrag]::OverDesktop() -eq 1) {
+      $lP0 = [DeskFenceDrag]::Pos()
+      $lEmpty = (Test-EmptyDesktop $lP0)
+    }
+  }
+  if ($d -eq 0 -and $prevDown -eq 1) {
+    if ($lEmpty) {
+      $p = [DeskFenceDrag]::Pos()
+      if ([Math]::Abs($p.X - $lP0.X) -le 4 -and [Math]::Abs($p.Y - $lP0.Y) -le 4) {
+        $now = $clock.ElapsedMilliseconds
+        if ($now - $lastClickAt -le $dblMs -and [Math]::Abs($p.X - $lastClickPos.X) -le 6 -and [Math]::Abs($p.Y - $lastClickPos.Y) -le 6) {
+          [Console]::Out.WriteLine('Q')
+          [Console]::Out.Flush()
+          $lastClickAt = -100000
+        } else {
+          $lastClickAt = $now
+          $lastClickPos = $p
+        }
+      } else {
+        $lastClickAt = -100000 # a drag, not a click
+      }
+    }
+    $lEmpty = $false
+  }
   $prevDown = $d
+
+  # ---- Peek: Win + Space ----
+  $ws = [DeskFenceDrag]::WinSpace()
+  if ($ws -eq 1 -and $prevWs -eq 0 -and $peekFlag -ne '' -and (Test-Path -LiteralPath $peekFlag)) {
+    [Console]::Out.WriteLine('P')
+    [Console]::Out.Flush()
+  }
+  $prevWs = $ws
+
+  # ---- commands from DeskFence ----
+  if (($tick % 5) -eq 0 -and $cmdFile -ne '' -and (Test-Path -LiteralPath $cmdFile)) {
+    try {
+      $cmd = [IO.File]::ReadAllText($cmdFile)
+      Remove-Item -LiteralPath $cmdFile -Force -ErrorAction SilentlyContinue
+      $parts = @($cmd.Trim() -split '\s+')
+      if ($parts[0] -eq 'SINK' -and $parts.Count -gt 1) {
+        [long[]]$hs = @($parts[1..($parts.Count - 1)] | ForEach-Object { [long]$_ })
+        [DeskFenceDrag]::Sink($hs, [uint32]$parent)
+      }
+    } catch { }
+  }
+
   $a = 0
   if ($armed) { $a = 1 }
   $tick++
   $s = "S $d $o $a $sh $rd $rdraw"
-  if ($s -ne $last -or ($tick % 10) -eq 0) {   # also a heartbeat every ~0.6 s
+  if ($s -ne $last -or ($tick % 20) -eq 0) {   # also a heartbeat every ~0.6 s
     [Console]::Out.WriteLine($s)
     [Console]::Out.Flush()
     $last = $s
   }
-  if ($parent -gt 0 -and ($tick % 40) -eq 0) {
+  if ($parent -gt 0 -and ($tick % 80) -eq 0) {
     if (-not (Get-Process -Id $parent -ErrorAction SilentlyContinue)) { exit }
   }
-  Start-Sleep -Milliseconds 60
+  Start-Sleep -Milliseconds 30 # fast enough to see both clicks of a double-click
 }
 `;
 
@@ -178,6 +273,8 @@ function parseLine(line) {
   const text = String(line || '').trim();
   if (text === 'G') return { event: 'draw-end' };
   if (text === 'X') return { event: 'draw-cancel' };
+  if (text === 'Q') return { event: 'quick-hide' };
+  if (text === 'P') return { event: 'peek' };
   const match = /^S ([01]) ([01]) ([01]) ([01])(?: ([01]) ([01]))?$/.exec(text);
   if (!match) return null;
   return {
@@ -197,6 +294,11 @@ function createDragWatch(options = {}) {
   const retryDelayMs = options.retryDelayMs == null ? 3000 : options.retryDelayMs;
   const maxRestarts = options.maxRestarts == null ? 3 : options.maxRestarts;
   const drawFlagPath = options.drawFlagPath || '';
+  const extraPaths = {
+    quickHideFlagPath: options.quickHideFlagPath || '',
+    peekFlagPath: options.peekFlagPath || '',
+    commandPath: options.commandPath || '',
+  };
 
   let child = null;
   let stopped = true;
@@ -208,7 +310,7 @@ function createDragWatch(options = {}) {
     try {
       proc = spawnFn(
         'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encodeCommand(buildScript(process.pid, drawFlagPath))],
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encodeCommand(buildScript(process.pid, drawFlagPath, extraPaths))],
         { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
       );
     } catch (error) {
