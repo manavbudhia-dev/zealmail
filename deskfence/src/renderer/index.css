@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  background: transparent;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+/* Fence animations */
+/* opacity only: animating `transform` overrides react-draggable's translate()
+   and makes every fence flash at the top-left corner on load */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fence-enter {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Auto roll-up: the body of the fence drops down from the title bar when the mouse arrives */
+@keyframes fence-dropdown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fence-dropdown {
+  animation: fence-dropdown 0.16s ease-out;
+  transform-origin: top;
+}
+
+/* Selection highlight */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: white;
+}
+
+/* ---------------------------------------------------------------------------
+   Light theme. <html data-theme="light"> is set by utils/theme.ts.
+   Only dialogs, menus and buttons (position: fixed) are restyled; each fence keeps
+   its own colours (🎨 in the fence header). Generated mapping of the Tailwind grays.
+   --------------------------------------------------------------------------- */
+[data-theme="light"] .fixed.bg-gray-800,
+[data-theme="light"] .fixed .bg-gray-800 { background-color:#ffffff !important; }
+[data-theme="light"] .fixed.bg-gray-750,
+[data-theme="light"] .fixed .bg-gray-750 { background-color:#f3f4f6 !important; }
+[data-theme="light"] .fixed.bg-gray-700,
+[data-theme="light"] .fixed .bg-gray-700 { background-color:#e5e7eb !important; }
+[data-theme="light"] .fixed.bg-gray-600,
+[data-theme="light"] .fixed .bg-gray-600 { background-color:#d1d5db !important; }
+[data-theme="light"] .fixed.bg-gray-700\/50,
+[data-theme="light"] .fixed .bg-gray-700\/50 { background-color:rgba(229,231,235,.6) !important; }
+[data-theme="light"] .fixed.border-gray-700,
+[data-theme="light"] .fixed .border-gray-700 { border-color:#d1d5db !important; }
+[data-theme="light"] .fixed.border-gray-600,
+[data-theme="light"] .fixed .border-gray-600 { border-color:#cbd5e1 !important; }
+[data-theme="light"] .fixed.border-gray-500,
+[data-theme="light"] .fixed .border-gray-500 { border-color:#9ca3af !important; }
+[data-theme="light"] .fixed.text-gray-300,
+[data-theme="light"] .fixed .text-gray-300 { color:#374151 !important; }
+[data-theme="light"] .fixed.text-gray-400,
+[data-theme="light"] .fixed .text-gray-400 { color:#6b7280 !important; }
+[data-theme="light"] .fixed.text-gray-500,
+[data-theme="light"] .fixed .text-gray-500 { color:#6b7280 !important; }
+[data-theme="light"] .fixed.text-blue-200,
+[data-theme="light"] .fixed .text-blue-200 { color:#1e3a8a !important; }
+[data-theme="light"] .fixed.text-blue-300,
+[data-theme="light"] .fixed .text-blue-300 { color:#1d4ed8 !important; }
+[data-theme="light"] .fixed.text-yellow-400,
+[data-theme="light"] .fixed .text-yellow-400 { color:#b45309 !important; }
+[data-theme="light"] .fixed.text-green-400,
+[data-theme="light"] .fixed .text-green-400 { color:#15803d !important; }
+[data-theme="light"] .fixed.bg-blue-900\/20,
+[data-theme="light"] .fixed .bg-blue-900\/20 { background-color:rgba(59,130,246,.10) !important; }
+[data-theme="light"] .fixed.border-blue-700,
+[data-theme="light"] .fixed .border-blue-700 { border-color:#93c5fd !important; }
+[data-theme="light"] .fixed.hover\:bg-gray-700:hover,
+[data-theme="light"] .fixed .hover\:bg-gray-700:hover { background-color:#e5e7eb !important; }
+[data-theme="light"] .fixed.hover\:bg-gray-600:hover,
+[data-theme="light"] .fixed .hover\:bg-gray-600:hover { background-color:#d1d5db !important; }
+[data-theme="light"] .fixed.hover\:bg-gray-500:hover,
+[data-theme="light"] .fixed .hover\:bg-gray-500:hover { background-color:#9ca3af !important; }
+[data-theme="light"] .fixed.hover\:border-gray-500:hover,
+[data-theme="light"] .fixed .hover\:border-gray-500:hover { border-color:#9ca3af !important; }
+[data-theme="light"] .fixed.hover\:text-white:hover,
+[data-theme="light"] .fixed .hover\:text-white:hover { color:#000000 !important; }
+[data-theme="light"] .fixed.text-white:not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-green-"]):not([class*="bg-yellow-"]):not([class*="bg-purple-"]),
+[data-theme="light"] .fixed .text-white:not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-green-"]):not([class*="bg-yellow-"]):not([class*="bg-purple-"]) { color:#111827 !important; }
+[data-theme="light"] .fixed input, [data-theme="light"] .fixed select, [data-theme="light"] .fixed textarea { color-scheme: light; }
+[data-theme="light"] .fixed ::placeholder { color:#9ca3af; }
+[data-theme="dark"] .fixed input, [data-theme="dark"] .fixed select, [data-theme="dark"] .fixed textarea { color-scheme: dark; }
+
+/* Compact fences (layout presets): title only, header buttons appear on hover, no scrollbars */
+.fence-compact .fence-actions { opacity: 0; transition: opacity 0.15s ease; }
+.fence-compact:hover .fence-actions { opacity: 1; }
+.fence-compact .fence-body { scrollbar-width: none; }
+.fence-compact .fence-body::-webkit-scrollbar { display: none; }
