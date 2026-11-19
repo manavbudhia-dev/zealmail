@@ -7,11 +7,12 @@ interface ContextMenuProps {
   onOpenSettings: () => void;
   onOpenAutomation: () => void;
   onOpenScheduled: () => void;
+  onOrganize: () => void;
   onClose: () => void;
 }
 
 const MENU_WIDTH = 220;
-const MENU_HEIGHT = 300;
+const MENU_HEIGHT = 340;
 
 /** The DeskFence menu (right-click on a fence area, or the ⋯ button). */
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -21,6 +22,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onOpenSettings,
   onOpenAutomation,
   onOpenScheduled,
+  onOrganize,
   onClose,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -61,6 +63,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       }}
     >
       {item('➕ New fence', onCreateFence, 'drag to draw')}
+      {item('🧹 Organize my Desktop…', onOrganize)}
       <div className="my-1 border-t border-gray-700" />
       {item('⚡ Automation rules', onOpenAutomation)}
       {item('🗓 Scheduled tasks', onOpenScheduled)}

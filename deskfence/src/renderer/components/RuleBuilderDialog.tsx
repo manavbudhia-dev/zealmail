@@ -44,6 +44,7 @@ const RuleBuilderDialog: React.FC<RuleBuilderDialogProps> = ({ onClose, existing
     { value: 'size', label: 'File Size' },
     { value: 'date', label: 'Date Modified' },
     { value: 'path', label: 'Source Path' },
+    { value: 'kind', label: 'Item kind (file / folder)' },
   ];
 
   const operators = {
@@ -52,6 +53,7 @@ const RuleBuilderDialog: React.FC<RuleBuilderDialogProps> = ({ onClose, existing
     size: ['equals', 'greaterThan', 'lessThan'],
     date: ['equals', 'greaterThan', 'lessThan'],
     path: ['equals', 'contains', 'startsWith'],
+    kind: ['equals'],
   };
 
   const handleAddCondition = () => {

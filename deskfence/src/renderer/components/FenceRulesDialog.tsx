@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useFenceStore } from '../store/fenceStore';
 import { RuleEngine } from '../utils/rule-engine';
 import RuleBuilderDialog from './RuleBuilderDialog';
+import { QUICK_RULES, makeQuickRule, type QuickRule } from '../utils/quick-rules';
+import { previewExistingFiles, sortExistingFiles } from '../utils/rule-runner';
 import type { AutomationRule, Fence } from '../../shared/types';
 
 interface FenceRulesDialogProps {
@@ -14,6 +16,8 @@ const FenceRulesDialog: React.FC<FenceRulesDialogProps> = ({ fenceId, onClose })
   const fence = useFenceStore((state) => state.fences.find((f) => f.id === fenceId)) as Fence | undefined;
   const { updateFence, saveFences } = useFenceStore();
   const [editing, setEditing] = useState<AutomationRule | 'new' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   if (!fence) return null;
   const rules = fence.rules || [];
@@ -21,6 +25,42 @@ const FenceRulesDialog: React.FC<FenceRulesDialogProps> = ({ fenceId, onClose })
   const setRules = (next: AutomationRule[]) => {
     updateFence(fence.id, { rules: next });
     saveFences();
+  };
+
+  // Applies rules to what is ALREADY in their folders (new files are handled as they arrive)
+  const sortNow = async (only: AutomationRule[], askFirst: boolean) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const scoped = only.map((r) => ({ ...r, targetFenceId: fence.id }));
+      const planned = await previewExistingFiles(scoped);
+      if (planned.length === 0) {
+        setMessage('Nothing to sort right now: no item in the watched folder matches.');
+        return;
+      }
+      if (askFirst && !confirm(`Move the ${planned.length} matching item(s) that are already there into “${fence.name}” now?`)) return;
+      const { moved } = await sortExistingFiles(scoped);
+      setMessage(`${moved} item(s) moved into “${fence.name}”.`);
+    } catch (error) {
+      setMessage(`Sorting failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addQuickRule = async (quick: QuickRule) => {
+    const desktop = await window.electronAPI.getKnownPath('desktop');
+    if (!desktop) return alert('Could not find your Desktop folder.');
+    try {
+      await window.electronAPI.watchFolder(desktop);
+    } catch (error) {
+      return alert(`Cannot watch the Desktop: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const rule = makeQuickRule(quick, fence.id, desktop);
+    const latest = useFenceStore.getState().fences.find((f) => f.id === fence.id);
+    updateFence(fence.id, { rules: [...(latest?.rules || []), rule] });
+    await saveFences();
+    await sortNow([rule], true);
   };
 
   return (
@@ -40,6 +80,28 @@ const FenceRulesDialog: React.FC<FenceRulesDialogProps> = ({ fenceId, onClose })
           </div>
 
           <div className="flex-1 overflow-auto p-6 space-y-3">
+            <div>
+              <div className="text-sm text-gray-300 mb-2">Quick rules: collect from the Desktop</div>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_RULES.map((quick) => {
+                  const has = rules.some((r) => r.preset === quick.key);
+                  return (
+                    <button
+                      key={quick.key}
+                      disabled={has || busy}
+                      onClick={() => addQuickRule(quick)}
+                      className="px-3 py-1.5 text-sm rounded-full bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-40"
+                      title={has ? 'Already a rule of this fence' : `New ${quick.label.toLowerCase()} on the Desktop go into this fence`}
+                    >
+                      {quick.emoji} {quick.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {message && <div className="p-3 rounded bg-gray-700/50 text-sm text-gray-300">{message}</div>}
+
             {rules.length === 0 && (
               <div className="text-center py-8 text-gray-400">
                 <div className="text-4xl mb-3">⚡</div>
@@ -71,6 +133,14 @@ const FenceRulesDialog: React.FC<FenceRulesDialogProps> = ({ fenceId, onClose })
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => sortNow([rule], true)}
+                      disabled={busy || !rule.enabled}
+                      className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-40"
+                      title="Apply this rule to the items already in its folder"
+                    >
+                      Sort now
+                    </button>
                     <button
                       onClick={() => setEditing(rule)}
                       className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-500 text-white rounded"

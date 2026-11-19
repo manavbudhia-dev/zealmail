@@ -3,6 +3,7 @@ import { useAutomationStore } from '../store/automationStore';
 import { useFenceStore } from '../store/fenceStore';
 import { RuleEngine } from '../utils/rule-engine';
 import RuleBuilderDialog from './RuleBuilderDialog';
+import { previewExistingFiles, sortExistingFiles } from '../utils/rule-runner';
 import type { AutomationRule } from '../../shared/types';
 
 interface AutomationPanelProps {
@@ -14,6 +15,24 @@ const AutomationPanel: React.FC<AutomationPanelProps> = ({ onClose }) => {
   const { rules, toggleRule, deleteRule } = useAutomationStore();
   const fences = useFenceStore((state) => state.fences);
   const [editing, setEditing] = useState<AutomationRule | 'new' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const sortEverythingNow = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const planned = await previewExistingFiles();
+      if (planned.length === 0) return setMessage('Nothing to sort: no item in a watched folder matches a rule.');
+      if (!confirm(`Apply all rules to what is already in their folders?\n\n${planned.length} item(s) will be moved into fences.`)) return;
+      const { moved } = await sortExistingFiles();
+      setMessage(`${moved} item(s) moved into fences.`);
+    } catch (error) {
+      setMessage(`Sorting failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const fenceName = (id: string) => fences.find((f) => f.id === id)?.name;
   const perFenceCount = fences.reduce((n, f) => n + (f.rules?.length || 0), 0);
@@ -35,6 +54,7 @@ const AutomationPanel: React.FC<AutomationPanelProps> = ({ onClose }) => {
           </div>
 
           <div className="flex-1 overflow-auto p-6 space-y-3">
+            {message && <div className="p-3 rounded bg-gray-700/50 text-sm text-gray-300">{message}</div>}
             {perFenceCount > 0 && (
               <div className="text-xs text-gray-400">
                 {perFenceCount} more rule(s) belong to single fences: open them with ⚡ on that fence. Those run first.
@@ -112,7 +132,15 @@ const AutomationPanel: React.FC<AutomationPanelProps> = ({ onClose }) => {
             </button>
           </div>
 
-          <div className="flex justify-end px-6 py-4 border-t border-gray-700">
+          <div className="flex justify-between px-6 py-4 border-t border-gray-700">
+            <button
+              onClick={sortEverythingNow}
+              disabled={busy}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors disabled:opacity-50"
+              title="Rules handle new files as they arrive; this sorts the items already there"
+            >
+              {busy ? 'Sorting…' : 'Sort existing files now'}
+            </button>
             <button onClick={onClose} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
               Done
             </button>

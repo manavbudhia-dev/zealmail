@@ -9,7 +9,8 @@ export class RuleEngine {
     fileName: string,
     fileSize: number,
     rule: AutomationRule,
-    fileModified: number = Date.now()
+    fileModified: number = Date.now(),
+    isDirectory = false
   ): boolean {
     if (!rule.enabled || !rule.conditions || rule.conditions.length === 0) {
       return false;
@@ -17,7 +18,7 @@ export class RuleEngine {
 
     // All conditions must match (AND logic)
     return rule.conditions.every((condition) =>
-      this.matchesCondition(filePath, fileName, fileSize, condition, fileModified)
+      this.matchesCondition(filePath, fileName, fileSize, condition, fileModified, isDirectory)
     );
   }
 
@@ -37,22 +38,32 @@ export class RuleEngine {
     fileName: string,
     fileSize: number,
     condition: RuleCondition,
-    fileModified: number
+    fileModified: number,
+    isDirectory = false
   ): boolean {
     const value = condition.value;
 
     switch (condition.type) {
+      case 'kind':
+        return String(value).trim().toLowerCase() === (isDirectory ? 'folder' : 'file');
+
       case 'extension': {
+        if (isDirectory) return false; // "Projects.v2" is a folder, not a ".v2" file
         // "README" has no extension (it is not "readme"); ".gitignore" neither
         const dot = fileName.lastIndexOf('.');
         const ext = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
-        const targetExt = String(value).replace('.', '').toLowerCase();
+        // "jpg, png, gif" = any of these
+        const wanted = String(value)
+          .split(/[\s,;]+/)
+          .map((e) => e.trim().replace(/^\./, '').toLowerCase())
+          .filter(Boolean);
+        if (wanted.length === 0) return false;
 
         switch (condition.operator) {
           case 'equals':
-            return ext === targetExt;
+            return wanted.includes(ext);
           case 'contains':
-            return ext.includes(targetExt);
+            return wanted.some((w) => ext.includes(w));
           default:
             return false;
         }

@@ -11,6 +11,7 @@ import { handleFolderEvent, allWatchPaths } from './utils/rule-runner';
 import { useDisplayStore, loadWindowInfo, fenceBelongsHere } from './store/displayStore';
 import { applyTheme, currentTheme, defaultFenceStyle } from './utils/theme';
 import { reconcileManagedFences, watchForFence, refreshPortalFence } from './utils/fence-files';
+import { planOrganizeDesktop, organizeDesktop } from './utils/quick-rules';
 import { dragKind, readDroppedEntries, createFencesFromFolders, moveItemBackToDesktop } from './utils/folder-drop';
 import type { Fence as FenceType } from '../shared/types';
 import type { WindowInfo, DrawRect } from './types';
@@ -224,6 +225,28 @@ function App() {
     saveFences();
   };
   createFenceRef.current = createFenceAt;
+
+  // One click: a fence per kind of item on the Desktop, each with a rule that keeps it sorted
+  const handleOrganize = async () => {
+    setContextMenu(null);
+    try {
+      const plan = await planOrganizeDesktop();
+      if (plan.groups.length === 0) return showNotice('Nothing to organize: no files or folders on the Desktop.');
+      const lines = plan.groups.map((g) => `• ${g.quick.emoji} ${g.quick.label}: ${g.count}${g.existingFenceId ? ' (existing fence)' : ''}`).join('\n');
+      if (
+        !confirm(
+          `Organize your Desktop into fences?\n\n${lines}\n\n${plan.total} item(s) will be moved from the Desktop into the fences ` +
+            `(their files go to Documents\\DeskFence). New Desktop files of these kinds will be sorted automatically.\n` +
+            `Dragging an item from a fence back onto the Desktop puts it back.`
+        )
+      )
+        return;
+      const result = await organizeDesktop(plan);
+      showNotice(`Created ${result.fences} fence(s) and moved ${result.moved} item(s) off the Desktop.`);
+    } catch (error) {
+      showNotice(`Could not organize the Desktop: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   // "New fence" from the menu / tray: the next drag on this monitor draws it
   const startDrawMode = () => {
@@ -454,6 +477,7 @@ function App() {
           x={contextMenu.x}
           y={contextMenu.y}
           onCreateFence={startDrawMode}
+          onOrganize={handleOrganize}
           onOpenSettings={() => {
             setShowSettings(true);
             setContextMenu(null);

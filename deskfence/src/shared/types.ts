@@ -42,7 +42,7 @@ export interface FenceTab {
 }
 
 export interface RuleCondition {
-  type: 'extension' | 'name' | 'size' | 'date' | 'path';
+  type: 'extension' | 'name' | 'size' | 'date' | 'path' | 'kind'; // kind: value 'file' | 'folder'
   operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'matches';
   value: string | number;
 }
@@ -56,6 +56,7 @@ export interface AutomationRule {
   targetFenceId: string;
   schedule?: string; // Cron expression
   watchPaths?: string[];
+  preset?: string; // set when made from a quick rule ("images", "documents"...)
 }
 
 export interface Fence {
