@@ -535,7 +535,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
           border: `${style.borderWidth}px solid ${style.borderColor}`,
           borderRadius: style.borderRadius,
           opacity: style.opacity,
-          boxShadow: '0 4px 18px rgba(0, 0, 0, 0.25)',
+          boxShadow: style.shadow === false ? 'none' : '0 4px 18px rgba(0, 0, 0, 0.25)',
         }}
         onClick={() => setSelectedFence(fence.id)}
         onDrop={handleDrop}
@@ -546,8 +546,15 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
       >
         {/* Header: centered title (or the tabs), options behind ⋯ / right-click */}
         <div
-          className={`fence-header relative flex items-center justify-center ${tabbed ? 'pl-1.5 pr-8' : 'px-8'} cursor-move select-none`}
-          style={{ color: style.labelColor, fontSize: style.labelSize, minHeight: Math.round(style.labelSize * 2) }}
+          className={`fence-header relative flex items-center ${style.titleAlign === 'left' && !tabbed ? 'justify-start pl-3 pr-8' : 'justify-center'} ${
+            tabbed ? 'pl-1.5 pr-8' : style.titleAlign === 'left' ? '' : 'px-8'
+          } cursor-move select-none`}
+          style={{
+            color: style.labelColor,
+            fontSize: style.labelSize,
+            minHeight: Math.round(style.labelSize * 2),
+            backgroundColor: style.titleBarColor || undefined,
+          }}
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -563,8 +570,9 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
                     key={tab.id}
                     data-tab-id={tab.id}
                     className={`group/tab relative flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-0.5 rounded cursor-pointer ${
-                      active ? 'bg-white/15 font-semibold' : 'opacity-60 hover:opacity-100 hover:bg-white/5'
+                      active ? 'font-semibold' : 'opacity-60 hover:opacity-100 hover:bg-white/5'
                     }`}
+                    style={active ? { backgroundColor: style.tabColor || 'rgba(255, 255, 255, 0.15)' } : undefined}
                     onClick={(e) => {
                       e.stopPropagation();
                       updateFence(fence.id, switchTab(latestFence(), tab.id));
@@ -631,8 +639,8 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
               autoFocus
             />
           ) : (
-            <div className="flex items-center justify-center gap-2 min-w-0 py-0.5">
-              {style.compactHeader && <FolderIcon size={Math.round(style.labelSize * 1.3)} />}
+            <div className={`flex items-center gap-2 min-w-0 py-0.5 ${style.titleAlign === 'left' ? 'justify-start' : 'justify-center'}`}>
+              {style.compactHeader && <FolderIcon size={Math.round(style.labelSize * 1.3)} tint={style.iconTint} strength={style.iconTintStrength} />}
               <span className="font-semibold truncate" onDoubleClick={() => setIsEditing(true)} title="Double-click to rename">
                 {fence.name}
               </span>

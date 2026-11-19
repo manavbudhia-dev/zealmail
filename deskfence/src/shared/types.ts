@@ -23,6 +23,12 @@ export interface FenceStyle {
   itemLabelSize?: number; // Font size of the item names in px (default 12)
   columns?: number; // Fixed number of item columns (default: as many as fit)
   compactHeader?: boolean; // Folder glyph + title only; the header buttons show on hover
+  titleAlign?: 'left' | 'center'; // default center
+  titleBarColor?: string; // background of the title bar (default: none, the panel colour shows)
+  tabColor?: string; // highlight of the active tab
+  iconTint?: string; // colour laid over every icon (keeps each icon's light and shade)
+  iconTintStrength?: number; // 0..1, default 0 = real colours
+  shadow?: boolean; // drop shadow under the fence (default on)
 }
 
 export interface FenceItem {

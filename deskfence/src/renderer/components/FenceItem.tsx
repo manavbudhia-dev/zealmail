@@ -24,6 +24,8 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
   );
   const style = fence ? displayStyle(fence.style) : undefined;
   const iconPx = style?.iconPx ?? 34;
+  const tint = style?.iconTint;
+  const tintStrength = style?.iconTintStrength ?? 0;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Real Windows icon (falls back to the emoji below if it can't be loaded)
@@ -137,9 +139,30 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
       >
         {/* 'folder' = the main process found a folder (Windows would have given a drive icon) */}
         {iconUrl === 'folder' || (!iconUrl && item.type === 'folder') ? (
-          <FolderIcon size={iconPx} />
+          <FolderIcon size={iconPx} tint={tint} strength={tintStrength} />
         ) : iconUrl ? (
-          <img src={iconUrl} alt="" className="object-contain" style={{ width: iconPx, height: iconPx }} draggable={false} />
+          <span className="relative inline-block" style={{ width: iconPx, height: iconPx, isolation: 'isolate' }}>
+            <img src={iconUrl} alt="" className="object-contain" style={{ width: iconPx, height: iconPx }} draggable={false} />
+            {/* icon tint: the colour is laid over the icon's own shape only, keeping its light and shade */}
+            {tint && tintStrength > 0 && (
+              <span
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundColor: tint,
+                  opacity: tintStrength,
+                  mixBlendMode: 'color',
+                  WebkitMaskImage: `url("${iconUrl}")`,
+                  maskImage: `url("${iconUrl}")`,
+                  WebkitMaskSize: 'contain',
+                  maskSize: 'contain',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center',
+                  maskPosition: 'center',
+                }}
+              />
+            )}
+          </span>
         ) : (
           getIcon()
         )}
