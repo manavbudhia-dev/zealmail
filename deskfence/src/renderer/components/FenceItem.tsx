@@ -330,4 +330,4 @@ const FenceItem: React.FC<FenceItemProps> = ({
   );
 };
 
-export default FenceItem;
+export default React.memo(FenceItem);

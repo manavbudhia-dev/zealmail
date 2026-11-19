@@ -37,7 +37,9 @@ interface FenceProps {
 }
 
 const Fence: React.FC<FenceProps> = ({ fence }) => {
-  const { updateFence, deleteFence, saveFences, selectedFenceId, setSelectedFence, addItemToFence, removeItemFromFence, moveItemBetweenFences } = useFenceStore();
+  // Actions only (they never change): subscribing to the whole store redrew EVERY fence on any change,
+  // e.g. on each mouse move while one fence was resized.
+  const { updateFence, deleteFence, saveFences, setSelectedFence, addItemToFence, removeItemFromFence, moveItemBetweenFences } = useFenceStore.getState();
   // The `fence` prop is the value from the last render. Handlers that rebuild `items`/`tabs` must
   // start from the store's current copy, or an item added in between (a rule, a folder refresh,
   // another monitor's save) is silently overwritten.
@@ -857,7 +859,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
           )}
           {details && shownItems.length > 0 && (
             <div
-              className="sticky top-0 z-[5] grid gap-2 px-1.5 py-1 mb-0.5 text-left border-b border-white/10 backdrop-blur-sm"
+              className="sticky top-0 z-[5] grid gap-2 px-1.5 py-1 mb-0.5 text-left border-b border-white/10"
               style={{
                 gridTemplateColumns: gridTemplate(detailColumns),
                 color: style.labelColor,
@@ -988,4 +990,5 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
   );
 };
 
-export default Fence;
+// redraw only when this fence's own data changes
+export default React.memo(Fence);

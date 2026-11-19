@@ -11,7 +11,7 @@ interface FolderPortalDialogProps {
 }
 
 const FolderPortalDialog: React.FC<FolderPortalDialogProps> = ({ fence, onClose }) => {
-  const { updateFence, saveFences } = useFenceStore();
+  const { updateFence, saveFences } = useFenceStore.getState();
   const [folderPath, setFolderPath] = useState(fence.portalPath || '');
   const [syncMode, setSyncMode] = useState<'watch' | 'manual'>('watch');
   const [isLoading, setIsLoading] = useState(false);

@@ -83,6 +83,12 @@ const CH = {
 // Otherwise => load the Vite dev server.
 const useDist = app.isPackaged || process.argv.includes('--dist');
 
+// The overlay sits on the Desktop behind other windows. Chromium's occlusion tracking would treat it
+// as hidden and pause it, so it could show stale content (or none) when the Desktop comes back.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+// a smaller JavaScript heap: the page holds little data
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=128');
+
 // One transparent overlay window per monitor: displayId -> { win, display, clickThrough }
 const windows = new Map();
 let tray = null;
@@ -379,7 +385,10 @@ async function reserveTarget(destDir, name, isDirectory) {
   }
 }
 
-function friendlyFsError(error) {
+function friendlyFsError(error, isDirectory) {
+  if (isDirectory && error && ['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) {
+    return 'This folder is in use: a program, terminal or editor has it (or a file in it) open. Close that and try again.';
+  }
   switch (error && error.code) {
     case 'ENOENT':
       return 'File no longer exists';
@@ -392,6 +401,19 @@ function friendlyFsError(error) {
       return 'Not enough disk space';
     default:
       return (error && error.message) || 'Unknown error';
+  }
+}
+
+// Windows refuses a rename for a moment while an antivirus, the search indexer or a thumbnail
+// reader has the item open (EPERM / EBUSY / EACCES). Wait a little and try again before failing.
+async function renameWithRetry(from, to) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fsp.rename(from, to);
+    } catch (error) {
+      if (attempt >= 5 || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
+      await sleep(150 * (attempt + 1));
+    }
   }
 }
 
@@ -426,7 +448,7 @@ async function transferOne(source, destDir, mode) {
       targetComplete = true;
     } else {
       try {
-        await fsp.rename(src, target);
+        await renameWithRetry(src, target);
         targetComplete = true;
       } catch (error) {
         if (error.code !== 'EXDEV') throw error;
@@ -469,7 +491,13 @@ async function transferFiles(paths, destDir, mode) {
     try {
       moved.push(await lockedTransfer(source, destDir, mode === 'copy' ? 'copy' : 'move'));
     } catch (error) {
-      const message = friendlyFsError(error);
+      let isDirectory = false;
+      try {
+        isDirectory = (await fsp.stat(source)).isDirectory();
+      } catch (_) {
+        /* gone */
+      }
+      const message = friendlyFsError(error, isDirectory);
       failed.push({
         path: source,
         error: error && error.copiedTo ? 'Copied to ' + error.copiedTo + ', but the original could not be fully removed: ' + message : message,
@@ -1168,6 +1196,12 @@ async function updateClickThroughFor(entry, point) {
       setClickThrough(entry, true); // cursor is on another monitor
       return;
     }
+    // Cursor resting in the same spot: the answer is the same, ask again only now and then
+    // (a fence can still move under a still cursor, e.g. auto roll-up), not 16 times a second.
+    const now = Date.now();
+    if (entry.lastPoint && entry.lastPoint.x === x && entry.lastPoint.y === y && now - entry.lastAsked < 500) return;
+    entry.lastPoint = { x, y };
+    entry.lastAsked = now;
     setClickThrough(entry, !(await hitTestWindow(entry, x, y)));
   } catch (_) {
     setClickThrough(entry, true); // when in doubt never block the user's desktop
@@ -1209,6 +1243,7 @@ function createWindowFor(display) {
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
+      spellcheck: false, // nothing to spell-check; saves memory
     },
   });
 
@@ -1384,6 +1419,13 @@ function setPeek(on) {
   if (on && windows.size === 0) createWindows();
   isPeeking = on;
   if (on) {
+    peekStartedAt = Date.now();
+    // Esc ends Peek even if Windows did not give our window the keyboard focus
+    try {
+      globalShortcut.register('Escape', () => setPeek(false));
+    } catch (_) {
+      /* Esc in the page still works when it has focus */
+    }
     if (isHidden) {
       isHidden = false;
       syncQuickHideIcons(false);
@@ -1399,6 +1441,11 @@ function setPeek(on) {
     const target = entry && !entry.win.isDestroyed() ? entry.win : controllerWindow();
     if (target) target.focus();
   } else {
+    try {
+      globalShortcut.unregister('Escape'); // give Esc back to every other app
+    } catch (_) {
+      /* not registered */
+    }
     for (const win of allWindows()) win.setAlwaysOnTop(false);
     sinkWindows(); // back down onto the Desktop, below the apps
   }
@@ -1412,8 +1459,11 @@ function togglePeek() {
 }
 
 // Switching to another app ends Peek (focus moving between our own monitor windows does not)
+let peekStartedAt = 0;
 function endPeekIfFocusLeft() {
   if (!isPeeking) return;
+  // right after Peek opens, focus changes are our own windows coming up, not the user leaving
+  if (Date.now() - peekStartedAt < 800) return;
   setTimeout(() => {
     const focused = BrowserWindow.getFocusedWindow();
     if (!focused || !allWindows().includes(focused)) setPeek(false);

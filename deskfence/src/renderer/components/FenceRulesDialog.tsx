@@ -14,7 +14,7 @@ interface FenceRulesDialogProps {
 /** Rules that belong to ONE fence: matching files from the watched folders land in this fence. */
 const FenceRulesDialog: React.FC<FenceRulesDialogProps> = ({ fenceId, onClose }) => {
   const fence = useFenceStore((state) => state.fences.find((f) => f.id === fenceId)) as Fence | undefined;
-  const { updateFence, saveFences } = useFenceStore();
+  const { updateFence, saveFences } = useFenceStore.getState();
   const [editing, setEditing] = useState<AutomationRule | 'new' | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

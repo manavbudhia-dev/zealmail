@@ -37,7 +37,7 @@ const toDateInput = (ms?: number) => {
 
 /** Customize one fence. Every change shows on the real fence right away; Cancel puts it back. */
 const FenceCustomizationDialog: React.FC<FenceCustomizationDialogProps> = ({ fence, onClose }) => {
-  const { updateFence, saveFences } = useFenceStore();
+  const { updateFence, saveFences } = useFenceStore.getState();
   // what to restore on Cancel
   const original = useRef({ style: fence.style, size: fence.size });
   const [name, setName] = useState(fence.name);

@@ -120,14 +120,81 @@ public static class DeskFenceDrag {
   }
   public static int OverDesktop() { string c = RootClassUnderCursor(); return (c == "Progman" || c == "WorkerW") ? 1 : 0; }
   public static int OverExplorer() { string c = RootClassUnderCursor(); return (c == "CabinetWClass" || c == "ExploreWClass") ? 1 : 0; }
+  [DllImport("user32.dll")] public static extern bool AllowSetForegroundWindow(int pid);
+}
+
+// Win + Space for Peek. Windows itself uses Win + Space (keyboard language switcher), which would pop
+// up and take the focus away, so a low-level keyboard hook takes the key combination for DeskFence.
+// The callback only flips a counter: anything slow here would delay every key press on the PC.
+public static class DeskFenceKeys {
+  delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
+  [StructLayout(LayoutKind.Sequential)] struct KBDLLHOOKSTRUCT { public uint vkCode; public uint scanCode; public uint flags; public uint time; public IntPtr extra; }
+  [StructLayout(LayoutKind.Sequential)] struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam; public IntPtr lParam; public uint time; public int x; public int y; }
+  [DllImport("user32.dll", SetLastError=true)] static extern IntPtr SetWindowsHookEx(int id, HookProc proc, IntPtr hMod, uint threadId);
+  [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr h, int code, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] static extern int GetMessage(out MSG msg, IntPtr hwnd, uint min, uint max);
+  [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] static extern IntPtr GetModuleHandle(string name);
+  [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
+  [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+
+  static HookProc proc = Hook; // kept in a static field: the GC must never collect the callback
+  static IntPtr hook = IntPtr.Zero;
+  static int presses = 0;
+  static bool swallowing = false;
+  public static volatile bool Enabled = false;
+  public static bool Active { get { return hook != IntPtr.Zero; } }
+  public static int TakePresses() { return System.Threading.Interlocked.Exchange(ref presses, 0); }
+
+  static IntPtr Hook(int code, IntPtr wParam, IntPtr lParam) {
+    if (code >= 0 && Enabled) {
+      KBDLLHOOKSTRUCT k = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+      if (k.vkCode == 0x20 && (k.flags & 0x10) == 0) { // Space, typed by the user (not injected)
+        int msg = wParam.ToInt32();
+        bool down = msg == 0x100 || msg == 0x104;
+        bool up = msg == 0x101 || msg == 0x105;
+        bool win = (GetAsyncKeyState(0x5B) & 0x8000) != 0 || (GetAsyncKeyState(0x5C) & 0x8000) != 0;
+        if (down && win) {
+          if (!swallowing) {
+            swallowing = true; // key repeat while held is swallowed but counts once
+            System.Threading.Interlocked.Increment(ref presses);
+            // a harmless unassigned key while Win is held, so letting go of Win does not open Start
+            keybd_event(0xE8, 0, 0, UIntPtr.Zero);
+            keybd_event(0xE8, 0, 2, UIntPtr.Zero);
+          }
+          return (IntPtr)1;
+        }
+        if (up && swallowing) {
+          swallowing = false;
+          return (IntPtr)1;
+        }
+      }
+    }
+    return CallNextHookEx(hook, code, wParam, lParam);
+  }
+
+  public static void Start() {
+    System.Threading.Thread t = new System.Threading.Thread(() => {
+      hook = SetWindowsHookEx(13, proc, GetModuleHandle(null), 0); // WH_KEYBOARD_LL
+      if (hook == IntPtr.Zero) return;
+      MSG m;
+      while (GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { } // a low-level hook needs a message loop
+    });
+    t.IsBackground = true;
+    t.Start();
+  }
 }
 '@
 Add-Type -TypeDefinition $sig
-$uia = $true
-try { Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase } catch { $uia = $false }
+$uia = $null
 
-# True only on EMPTY Desktop space: an icon (or its label) must keep its own right-drag (copy/move here).
+# True only on EMPTY Desktop space: an icon (or its label) keeps its own right-drag / double-click.
+# This asks Explorer (UI Automation), so it is only called once a gesture really happened, never on
+# every click: asking on every click made the Desktop itself sluggish.
 function Test-EmptyDesktop($pt) {
+  if ($uia -eq $null) {
+    try { Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase; $uia = $true } catch { $uia = $false }
+    $script:uia = $uia
+  }
   if (-not $uia) { return $false }
   try {
     $el = [System.Windows.Automation.AutomationElement]::FromPoint((New-Object System.Windows.Point($pt.X, $pt.Y)))
@@ -144,11 +211,14 @@ $peekFlag = ${psQuote(extra.peekFlagPath)}
 $cmdFile = ${psQuote(extra.commandPath)}
 $dblMs = [DeskFenceDrag]::GetDoubleClickTime()
 $clock = [Diagnostics.Stopwatch]::StartNew()
-$lEmpty = $false
 $lP0 = [DeskFenceDrag]::Pos()
 $lastClickAt = -100000
 $lastClickPos = $lP0
 $prevWs = 0
+$peekOn = $false
+[DeskFenceKeys]::Start()
+$rCandidate = $false
+$lOver = $false
 $armed = $false
 $prevDown = 0
 $prevR = 0
@@ -162,14 +232,19 @@ while ($true) {
   if ($rd -eq 1 -and $prevR -eq 0) {
     $rArmed = $false
     $rMoved = $false
+    $rCandidate = $false
     if ($drawFlag -ne '' -and (Test-Path -LiteralPath $drawFlag) -and [DeskFenceDrag]::OverDesktop() -eq 1) {
       $p0 = [DeskFenceDrag]::Pos()
-      $rArmed = (Test-EmptyDesktop $p0)
+      $rCandidate = $true
     }
   }
-  if ($rd -eq 1 -and $rArmed -and -not $rMoved) {
+  if ($rd -eq 1 -and $rCandidate -and -not $rMoved) {
     $p = [DeskFenceDrag]::Pos()
-    if ([Math]::Abs($p.X - $p0.X) -gt 12 -or [Math]::Abs($p.Y - $p0.Y) -gt 12) { $rMoved = $true }
+    if ([Math]::Abs($p.X - $p0.X) -gt 12 -or [Math]::Abs($p.Y - $p0.Y) -gt 12) {
+      $rMoved = $true
+      $rCandidate = $false
+      $rArmed = (Test-EmptyDesktop $p0) # an icon being right-dragged keeps its own copy/move menu
+    }
   }
   if ($rd -eq 0 -and $prevR -eq 1 -and $rArmed) {
     if ($rMoved) {
@@ -199,20 +274,20 @@ while ($true) {
   }
   # ---- Quick-hide: double-click on EMPTY Desktop space ----
   if ($d -eq 1 -and $prevDown -eq 0) {
-    $lEmpty = $false
-    if ($qhFlag -ne '' -and (Test-Path -LiteralPath $qhFlag) -and [DeskFenceDrag]::OverDesktop() -eq 1) {
-      $lP0 = [DeskFenceDrag]::Pos()
-      $lEmpty = (Test-EmptyDesktop $lP0)
-    }
+    $lOver = ([DeskFenceDrag]::OverDesktop() -eq 1)
+    $lP0 = [DeskFenceDrag]::Pos()
   }
   if ($d -eq 0 -and $prevDown -eq 1) {
-    if ($lEmpty) {
+    if ($lOver) {
       $p = [DeskFenceDrag]::Pos()
       if ([Math]::Abs($p.X - $lP0.X) -le 4 -and [Math]::Abs($p.Y - $lP0.Y) -le 4) {
         $now = $clock.ElapsedMilliseconds
         if ($now - $lastClickAt -le $dblMs -and [Math]::Abs($p.X - $lastClickPos.X) -le 6 -and [Math]::Abs($p.Y - $lastClickPos.Y) -le 6) {
-          [Console]::Out.WriteLine('Q')
-          [Console]::Out.Flush()
+          # a double-click on the Desktop: only now ask whether it was on empty space (not an icon)
+          if ($qhFlag -ne '' -and (Test-Path -LiteralPath $qhFlag) -and (Test-EmptyDesktop $p)) {
+            [Console]::Out.WriteLine('Q')
+            [Console]::Out.Flush()
+          }
           $lastClickAt = -100000
         } else {
           $lastClickAt = $now
@@ -222,24 +297,37 @@ while ($true) {
         $lastClickAt = -100000 # a drag, not a click
       }
     }
-    $lEmpty = $false
+    $lOver = $false
   }
   $prevDown = $d
 
   # ---- Peek: Win + Space ----
-  $ws = [DeskFenceDrag]::WinSpace()
-  if ($ws -eq 1 -and $prevWs -eq 0 -and $peekFlag -ne '' -and (Test-Path -LiteralPath $peekFlag)) {
+  if (($tick % 33) -eq 0) {
+    # about once a second: is Peek wanted? (never read a file inside the keyboard hook)
+    $peekOn = ($peekFlag -ne '' -and (Test-Path -LiteralPath $peekFlag))
+    [DeskFenceKeys]::Enabled = $peekOn
+  }
+  $peekPress = $false
+  if ([DeskFenceKeys]::Active) {
+    $peekPress = ([DeskFenceKeys]::TakePresses() -gt 0)
+  } else {
+    $ws = [DeskFenceDrag]::WinSpace()
+    $peekPress = ($ws -eq 1 -and $prevWs -eq 0 -and $peekOn)
+    $prevWs = $ws
+  }
+  if ($peekPress) {
+    # this process saw the key press, so it may let DeskFence take the foreground (focus for Esc)
+    [void][DeskFenceDrag]::AllowSetForegroundWindow(-1)
     [Console]::Out.WriteLine('P')
     [Console]::Out.Flush()
   }
-  $prevWs = $ws
 
   # ---- commands from DeskFence ----
   if (($tick % 5) -eq 0 -and $cmdFile -ne '' -and (Test-Path -LiteralPath $cmdFile)) {
     try {
       $cmd = [IO.File]::ReadAllText($cmdFile)
       Remove-Item -LiteralPath $cmdFile -Force -ErrorAction SilentlyContinue
-      $parts = @($cmd.Trim() -split '\s+')
+      $parts = @($cmd.Trim() -split '\\s+')
       if ($parts[0] -eq 'SINK' -and $parts.Count -gt 1) {
         [long[]]$hs = @($parts[1..($parts.Count - 1)] | ForEach-Object { [long]$_ })
         [DeskFenceDrag]::Sink($hs, [uint32]$parent)

@@ -278,18 +278,37 @@ function App() {
     setDrawMode(true);
   };
 
+  // Draw mode catches the mouse on the whole monitor, so it must never linger: Esc, switching to
+  // another app, or 20 seconds without drawing all end it (otherwise the Desktop seems frozen).
   useEffect(() => {
     if (!drawMode) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        drawStart.current = null;
-        setDrawPreview(null);
-        setDrawMode(false);
-      }
+    const cancel = () => {
+      drawStart.current = null;
+      setDrawPreview(null);
+      setDrawMode(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancel();
+    };
+    const timer = window.setTimeout(() => {
+      if (!drawStart.current) cancel();
+    }, 20000);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('blur', cancel);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('blur', cancel);
+    };
   }, [drawMode]);
+
+  // the DeskFence menu closes when you go to another app (clicks on empty Desktop never reach it)
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener('blur', close);
+    return () => window.removeEventListener('blur', close);
+  }, [contextMenu]);
 
   const rectFrom = (a: { x: number; y: number }, b: { x: number; y: number }): DrawRect => ({
     x: Math.min(a.x, b.x),
