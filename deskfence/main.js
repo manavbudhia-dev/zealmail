@@ -629,8 +629,43 @@ function registerIpc() {
   });
 
   ipcMain.handle(CH.GET_FILE_ICON, async (_e, filePath) => {
+    // Windows hands back a DRIVE icon for folders, so folders get the page's own folder icon
+    if (typeof filePath === 'string' && filePath && !/^shell:/i.test(filePath)) {
+      try {
+        if ((await fsp.stat(filePath)).isDirectory()) return 'folder';
+      } catch (_) {
+        /* missing / no access: fall through to the normal lookup */
+      }
+    }
+    // Windows returns a blank page for a shortcut's own file: draw the icon of what it opens instead
+    // (the program, or the .ico the shortcut names), the way the Desktop shows it.
+    let source = filePath;
+    if (typeof filePath === 'string' && /\.lnk$/i.test(filePath) && process.platform === 'win32') {
+      try {
+        const link = shell.readShortcutLink(filePath);
+        if (link.target) {
+          try {
+            if ((await fsp.stat(link.target)).isDirectory()) return 'folder';
+          } catch (_) {
+            /* target missing: use the shortcut's own icon */
+          }
+        }
+        source = pickIconSource(filePath, link);
+      } catch (_) {
+        /* unreadable shortcut: keep its own icon */
+      }
+    } else if (typeof filePath === 'string' && /\.url$/i.test(filePath)) {
+      // Internet shortcut: "IconFile=C:\...\app.exe" names the icon to show
+      try {
+        const match = /^IconFile=(.+)$/im.exec(await fsp.readFile(filePath, 'utf8'));
+        const iconFile = match && match[1].trim();
+        if (iconFile && fs.existsSync(iconFile)) source = iconFile;
+      } catch (_) {
+        /* keep its own icon */
+      }
+    }
     try {
-      const icon = await app.getFileIcon(filePath, { size: 'large' });
+      const icon = await app.getFileIcon(source, { size: 'large' });
       return icon.toDataURL();
     } catch (_) {
       return null;

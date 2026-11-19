@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { FenceItem as FenceItemType } from '../../shared/types';
 import { useFenceStore } from '../store/fenceStore';
 import { isManagedItem, refreshPortalFence, describeFailures, loadFileIcon } from '../utils/fence-files';
+import FolderIcon from './FolderIcon';
 
 interface FenceItemProps {
   item: FenceItemType;
@@ -17,7 +18,9 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
   const fence = useFenceStore((state) => state.fences.find((f) => f.id === fenceId));
   const managed = !!fence && isManagedItem(fence, item);
   const locked = !!fence?.isLocked;
-  const [iconUrl, setIconUrl] = useState<string | null>(() => (item.icon?.startsWith('data:') ? item.icon : null));
+  const [iconUrl, setIconUrl] = useState<string | null>(() =>
+    item.icon?.startsWith('data:') || item.icon === 'folder' ? item.icon : null
+  );
   const iconPx = fence?.style.iconPx ?? 32;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -25,7 +28,7 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
   useEffect(() => {
     let cancelled = false;
     // an icon stored with the item (a layout preset's) wins over looking one up
-    if (item.icon?.startsWith('data:')) {
+    if (item.icon?.startsWith('data:') || item.icon === 'folder') {
       setIconUrl(item.icon);
       return;
     }
@@ -37,6 +40,9 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
       cancelled = true;
     };
   }, [item.path, item.icon]);
+
+  // Windows never shows the .lnk / .url of a shortcut, so neither do we
+  const displayName = item.name.replace(/\.(lnk|url)$/i, '') || item.name;
 
   const canRemove = !locked && !(fence?.portalPath && !managed);
 
@@ -127,7 +133,10 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
         className="mb-1 group-hover:scale-110 transition-transform flex items-center justify-center"
         style={{ height: iconPx, fontSize: Math.round(iconPx * 0.9) }}
       >
-        {iconUrl ? (
+        {/* 'folder' = the main process found a folder (Windows would have given a drive icon) */}
+        {iconUrl === 'folder' || (!iconUrl && item.type === 'folder') ? (
+          <FolderIcon size={iconPx} />
+        ) : iconUrl ? (
           <img src={iconUrl} alt="" className="object-contain" style={{ width: iconPx, height: iconPx }} draggable={false} />
         ) : (
           getIcon()
@@ -140,7 +149,7 @@ const FenceItem: React.FC<FenceItemProps> = ({ item, fenceId }) => {
           ...(fence?.style.itemLabelSize ? { fontSize: fence.style.itemLabelSize, lineHeight: 1.2 } : {}),
         }}
       >
-        {item.name}
+        {displayName}
       </div>
 
       {/* Item menu. Portaled to <body>: a fixed menu inside a transformed fence would be misplaced. */}

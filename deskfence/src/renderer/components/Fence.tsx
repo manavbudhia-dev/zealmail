@@ -3,6 +3,7 @@ import Draggable from 'react-draggable';
 import { useFenceStore } from '../store/fenceStore';
 import type { Fence as FenceType } from '../../shared/types';
 import FenceItem from './FenceItem';
+import FolderIcon from './FolderIcon';
 import FolderPortalDialog from './FolderPortalDialog';
 import FenceCustomizationDialog from './FenceCustomizationDialog';
 import FenceRulesDialog from './FenceRulesDialog';
@@ -20,16 +21,6 @@ import {
   newItemId,
 } from '../utils/fence-files';
 
-// Yellow folder shown before the title of compact fences
-const FolderGlyph: React.FC<{ size: number }> = ({ size }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
-    <path
-      d="M2 6.5A2.5 2.5 0 0 1 4.5 4h4.2c.6 0 1.2.3 1.6.8l1.3 1.7h7.9A2.5 2.5 0 0 1 22 9v8.5a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 17.5z"
-      fill="#e9a825"
-    />
-    <path d="M2 10a2.5 2.5 0 0 1 2.5-2.5h15A2.5 2.5 0 0 1 22 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 17.5z" fill="#ffd25f" />
-  </svg>
-);
 
 // Auto roll-up timing: a short delay before dropping down (so passing the mouse over does not
 // flicker) and a longer one before rolling up (so a small slip outside does not close it).
@@ -476,7 +467,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
             />
           ) : (
             <div className="flex items-center gap-2">
-              {fence.style.compactHeader && <FolderGlyph size={Math.round(fence.style.labelSize * 1.45)} />}
+              {fence.style.compactHeader && <FolderIcon size={Math.round(fence.style.labelSize * 1.45)} />}
               <span
                 className="font-semibold"
                 onDoubleClick={() => setIsEditing(true)}
