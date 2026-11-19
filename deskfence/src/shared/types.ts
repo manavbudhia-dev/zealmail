@@ -86,6 +86,7 @@ export interface Fence {
   tags?: string[]; // Client, project, or category tags
   dueDate?: number; // Timestamp for deadline-based organization
   category?: string; // Client name, project name, research topic
+  privacy?: boolean; // contents masked until the mouse is over the fence
 }
 
 export interface AppConfig {

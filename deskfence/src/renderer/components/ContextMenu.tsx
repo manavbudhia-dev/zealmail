@@ -8,11 +8,13 @@ interface ContextMenuProps {
   onOpenAutomation: () => void;
   onOpenScheduled: () => void;
   onOrganize: () => void;
+  privacyOn: boolean;
+  onTogglePrivacy: () => void;
   onClose: () => void;
 }
 
 const MENU_WIDTH = 220;
-const MENU_HEIGHT = 340;
+const MENU_HEIGHT = 380;
 
 /** The DeskFence menu (right-click on a fence area, or the ⋯ button). */
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -23,6 +25,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onOpenAutomation,
   onOpenScheduled,
   onOrganize,
+  privacyOn,
+  onTogglePrivacy,
   onClose,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,6 +73,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       {item('🗓 Scheduled tasks', onOpenScheduled)}
       {item('⚙️ Settings', onOpenSettings)}
       <div className="my-1 border-t border-gray-700" />
+      {item(privacyOn ? '✓ Privacy mode' : '🙈 Privacy mode', onTogglePrivacy, privacyOn ? 'on' : 'mask all')}
       {item('👁 Peek (hide all fences)', () => {
         onClose();
         window.electronAPI.togglePeek();

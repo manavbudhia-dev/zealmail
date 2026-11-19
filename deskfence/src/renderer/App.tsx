@@ -12,6 +12,7 @@ import { useDisplayStore, loadWindowInfo, fenceBelongsHere } from './store/displ
 import { applyTheme, currentTheme, defaultFenceStyle } from './utils/theme';
 import { reconcileManagedFences, watchForFence, refreshPortalFence } from './utils/fence-files';
 import { planOrganizeDesktop, organizeDesktop } from './utils/quick-rules';
+import { usePrivacyStore, setPrivacyForAll } from './store/privacyStore';
 import { dragKind, readDroppedEntries, createFencesFromFolders, moveItemBackToDesktop } from './utils/folder-drop';
 import type { Fence as FenceType } from '../shared/types';
 import type { WindowInfo, DrawRect } from './types';
@@ -24,6 +25,7 @@ const DEFAULT_FENCE_HEIGHT = 400;
 function App() {
   const { fences, loadFences, saveFences, setPeekMode, addFence, applyIncoming, setRenameFence } = useFenceStore();
   const info = useDisplayStore((state) => state.info);
+  const privacyAll = usePrivacyStore((state) => state.all);
   const [showSettings, setShowSettings] = useState(false);
   const [showAutomation, setShowAutomation] = useState(false);
   const [showScheduled, setShowScheduled] = useState(false);
@@ -118,7 +120,13 @@ function App() {
         windowInfo = { displayId: 0, isController: true, primaryDisplayId: 0, displays: [{ id: 0, primary: true, label: 'Monitor 1' }] };
         useDisplayStore.getState().setInfo(windowInfo);
       }
-      window.electronAPI.getSettings().then((settings) => applyTheme(settings?.theme)).catch(() => applyTheme('auto'));
+      window.electronAPI
+        .getSettings()
+        .then((settings) => {
+          applyTheme(settings?.theme);
+          usePrivacyStore.getState().setAll(!!settings?.privacyMode);
+        })
+        .catch(() => applyTheme('auto'));
       await loadFences();
       if (cancelled || !windowInfo.isController) return;
 
@@ -158,7 +166,10 @@ function App() {
       window.electronAPI.onDisplaysChanged(() => {
         loadWindowInfo().catch(() => {});
       }),
-      window.electronAPI.onSettingsChanged((settings) => applyTheme(settings?.theme)),
+      window.electronAPI.onSettingsChanged((settings) => {
+        applyTheme(settings?.theme);
+        usePrivacyStore.getState().setAll(!!settings?.privacyMode);
+      }),
 
       // Right-click + drag on the Desktop (seen by the main process): live outline, then the fence
       window.electronAPI.onDrawPreview((rect) => setDrawPreview(rect)),
@@ -478,6 +489,11 @@ function App() {
           y={contextMenu.y}
           onCreateFence={startDrawMode}
           onOrganize={handleOrganize}
+          privacyOn={privacyAll}
+          onTogglePrivacy={() => {
+            setContextMenu(null);
+            setPrivacyForAll(!privacyAll).catch(() => {});
+          }}
           onOpenSettings={() => {
             setShowSettings(true);
             setContextMenu(null);

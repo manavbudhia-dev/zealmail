@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS = {
   hideDesktopIcons: false,
   dropFolderToFence: true,
   drawToCreate: true,
+  privacyMode: false,
 };
 
 function readJson<T>(key: string, fallback: T): T {

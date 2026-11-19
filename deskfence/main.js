@@ -35,6 +35,7 @@ const DEFAULT_SETTINGS = {
   hideDesktopIcons: false,
   dropFolderToFence: true, // drag a folder from File Explorer onto the bare Desktop => folder fence
   drawToCreate: true, // right-click + drag on empty Desktop space draws a new fence
+  privacyMode: false, // every fence's contents are masked until the mouse is over it
 };
 const DEV_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
 const DIST_INDEX = path.join(__dirname, 'dist', 'renderer', 'index.html');
@@ -597,6 +598,7 @@ function registerIpc() {
       writeJson('settings.json', merged);
       const iconResult = await applySettings(merged);
       sendToAll(CH.SETTINGS_CHANGED, merged);
+      syncTrayPrivacy(merged);
       return { success: true, desktopIcons: iconResult };
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -1294,6 +1296,25 @@ function trayAction(action) {
   sendToController(CH.TRAY_ACTION, action);
 }
 
+// ---- Privacy mode: one switch for all monitors (tray, the page's menu); kept in settings.json -----
+let trayMenu = null;
+
+function syncTrayPrivacy(settings) {
+  const item = trayMenu && trayMenu.getMenuItemById('privacy');
+  if (item) item.checked = !!settings.privacyMode;
+}
+
+function setPrivacyMode(on) {
+  try {
+    const merged = { ...getSettings(), privacyMode: !!on };
+    writeJson('settings.json', merged);
+    sendToAll(CH.SETTINGS_CHANGED, merged);
+    syncTrayPrivacy(merged);
+  } catch (error) {
+    console.error('Could not change privacy mode:', error);
+  }
+}
+
 function createTray() {
   let icon = nativeImage.createFromPath(ICON_PATH);
   if (icon.isEmpty()) icon = nativeImage.createFromDataURL(FALLBACK_ICON);
@@ -1308,6 +1329,13 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show/Hide Fences', click: () => togglePeekMode() },
+    {
+      id: 'privacy',
+      label: 'Privacy mode (mask fence contents)',
+      type: 'checkbox',
+      checked: !!getSettings().privacyMode,
+      click: (menuItem) => setPrivacyMode(menuItem.checked),
+    },
     { label: 'New Fence', click: () => trayAction('new-fence') },
     { type: 'separator' },
     { label: 'Automation Rules', click: () => trayAction('automation') },
@@ -1323,6 +1351,7 @@ function createTray() {
     },
   ]);
 
+  trayMenu = contextMenu;
   tray.setToolTip('DeskFence - Desktop Organizer');
   tray.setContextMenu(contextMenu);
   tray.on('double-click', () => togglePeekMode());

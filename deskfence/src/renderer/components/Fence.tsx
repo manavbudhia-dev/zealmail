@@ -6,6 +6,7 @@ import FenceItem from './FenceItem';
 import FolderIcon from './FolderIcon';
 import { createPortal } from 'react-dom';
 import { displayStyle } from '../utils/theme';
+import { usePrivacyStore } from '../store/privacyStore';
 import FolderPortalDialog from './FolderPortalDialog';
 import FenceCustomizationDialog from './FenceCustomizationDialog';
 import FenceRulesDialog from './FenceRulesDialog';
@@ -58,6 +59,25 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
   // fences still on the old blue default are drawn with the current default look (nothing is saved)
   const style = displayStyle(fence.style);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // ---- Privacy: contents masked until the mouse rests on the fence (a quick pass does not reveal) ----
+  const privacyAll = usePrivacyStore((state) => state.all);
+  const isPrivate = !!fence.privacy || privacyAll;
+  const [revealed, setRevealed] = useState(false);
+  const revealTimer = useRef<number | null>(null);
+  const reveal = () => {
+    if (!isPrivate || revealTimer.current !== null) return;
+    revealTimer.current = window.setTimeout(() => {
+      revealTimer.current = null;
+      setRevealed(true);
+    }, 250);
+  };
+  const conceal = () => {
+    if (revealTimer.current !== null) window.clearTimeout(revealTimer.current);
+    revealTimer.current = null;
+    setRevealed(false);
+  };
+  useEffect(() => () => conceal(), []);
 
   // A freshly drawn fence opens its title for typing, like naming a new folder
   const renameRequested = useFenceStore((state) => state.renameFenceId === fence.id);
@@ -147,6 +167,8 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
     isDragging || isResizing || isEditing || editingTabId !== null || dragHover ||
     showPortalDialog || showCustomization || showRules;
   const rolledUp = fence.autoRollup ? !hovered && !keepOpen : !!fence.collapsed;
+  // a dialog of this fence (rules, customize...) or a drag over it counts as "looking at it"
+  const masked = isPrivate && !revealed && !dragHover && !showPortalDialog && !showCustomization && !showRules && !isEditing;
 
   // Listen for folder changes if this fence has a portal
   useEffect(() => {
@@ -423,6 +445,13 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
     const entries: MenuEntry[] = [
       { label: 'Rename', run: locked ? lockedAlert('rename it') : () => setIsEditing(true), disabled: tabbed },
       { label: '🎨 Customize…', run: () => setShowCustomization(true) },
+      {
+        label: fence.privacy ? '✓ Privacy (contents hidden)' : '🙈 Privacy (hide contents)',
+        run: () => {
+          updateFence(fence.id, { privacy: !fence.privacy });
+          saveFences();
+        },
+      },
       '-',
     ];
     if (!fence.autoRollup) {
@@ -541,8 +570,14 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onMouseEnter={() => hoverOpen()}
-        onMouseLeave={() => hoverClose()}
+        onMouseEnter={() => {
+          hoverOpen();
+          reveal();
+        }}
+        onMouseLeave={() => {
+          hoverClose();
+          conceal();
+        }}
       >
         {/* Header: centered title (or the tabs), options behind ⋯ / right-click */}
         <div
@@ -664,7 +699,7 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
         </div>
 
         {/* Category / tags / due date: a quiet line under the title */}
-        {!rolledUp && (fence.category || fence.dueDate || (fence.tags && fence.tags.length > 0)) && (
+        {!rolledUp && !masked && (fence.category || fence.dueDate || (fence.tags && fence.tags.length > 0)) && (
           <div className="flex flex-wrap justify-center gap-1 px-2 pb-1 text-[11px]" style={{ color: style.labelColor }}>
             {fence.category && <span className="opacity-70 bg-white/10 px-2 rounded">{fence.category}</span>}
             {fence.dueDate && <span className="opacity-70 bg-yellow-600/30 px-2 rounded">📅 {new Date(fence.dueDate).toLocaleDateString()}</span>}
@@ -674,11 +709,19 @@ const Fence: React.FC<FenceProps> = ({ fence }) => {
           </div>
         )}
 
-        {/* Items */}
+        {/* Items (masked in privacy mode until the mouse is over the fence) */}
         <div
-          className={`fence-body flex-1 min-h-0 overflow-auto px-1.5 pb-1.5 ${fence.autoRollup ? 'fence-dropdown' : ''}`}
+          className={`fence-body relative flex-1 min-h-0 px-1.5 pb-1.5 ${masked ? 'fence-masked overflow-hidden' : 'overflow-auto'} ${fence.autoRollup ? 'fence-dropdown' : ''}`}
           style={{ display: rolledUp ? 'none' : undefined }}
+          aria-hidden={masked || undefined}
         >
+          {masked && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <span className="px-2 py-0.5 rounded bg-black/40 text-[11px]" style={{ color: style.labelColor }}>
+                🙈 Private · hover to show
+              </span>
+            </div>
+          )}
           <div
             className="grid gap-x-0 gap-y-1"
             style={{
