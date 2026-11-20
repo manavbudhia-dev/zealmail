@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import QRCode from "qrcode";
 import { getDb } from "@/db";
 import { mfaRecoveryCodes, users } from "@/db/schema";
@@ -42,7 +42,15 @@ export async function confirmMfaEnrollment(
 	if (!(await verifyTotp(user.totpSecret, code))) return { ok: false, error: "That code did not match. Check the time on your device and try again." };
 
 	const db = getDb(env);
-	await db.update(users).set({ totpEnabled: true, totpConfirmedAt: new Date(), requireSecondFactor: true }).where(eq(users.id, user.id));
+	// Only enable the exact secret the code was checked against. A concurrent
+	// `beginMfaEnrollment` (another tab) replaces the secret; enabling blindly
+	// would lock the account to a secret the authenticator never saw.
+	const enabled = await db
+		.update(users)
+		.set({ totpEnabled: true, totpConfirmedAt: new Date(), requireSecondFactor: true })
+		.where(and(eq(users.id, user.id), eq(users.totpSecret, user.totpSecret), eq(users.totpEnabled, false)))
+		.returning({ id: users.id });
+	if (!enabled.length) return { ok: false, error: "Enrolment changed in another window. Start again." };
 	const recoveryCodes = await issueRecoveryCodes(env, user.id);
 	// Other sessions predate the second factor; make them sign in again with it.
 	await deleteUserSessions(env, user.id, currentSessionToken);
