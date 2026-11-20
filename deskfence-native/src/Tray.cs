@@ -1,74 +1,73 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using WF = System.Windows.Forms;
 
 namespace DeskFence
 {
-    /// <summary>The notification-area icon and its menu: the always-reachable way into DeskFence.</summary>
+    /// <summary>The notification-area icon; its menu is the same Windows 11 style menu as the fences'.</summary>
     internal sealed class Tray : IDisposable
     {
         readonly DeskFenceApp app;
         readonly WF.NotifyIcon icon;
-        readonly WF.ToolStripMenuItem showHide, quickHide, quickHideIcons, winSpace, draw, autoStart;
 
         public Tray(DeskFenceApp app)
         {
             this.app = app;
-            var menu = new WF.ContextMenuStrip();
-            menu.Items.Add("New fence (drag a rectangle)", null, (_, __) => app.StartDrawMode());
-            showHide = new WF.ToolStripMenuItem("Hide all fences", null, (_, __) => app.ToggleQuickHide());
-            menu.Items.Add(showHide);
-            menu.Items.Add("Peek: fences above windows (Win+Space)", null, (_, __) => app.SetPeek(true));
-            menu.Items.Add(new WF.ToolStripSeparator());
-
-            var settingsMenu = new WF.ToolStripMenuItem("Settings");
-            draw = Toggle("Draw fences: right-drag on the Desktop", () => app.DrawOn, v => app.SetSetting("drawToCreate", v));
-            quickHide = Toggle("Quick-hide: double-click the Desktop", () => app.QuickHideOn, v => app.SetSetting("quickHide", v));
-            quickHideIcons = Toggle("Quick-hide hides Desktop icons too", () => app.QuickHideIconsOn, v => app.SetSetting("quickHideIcons", v));
-            winSpace = Toggle("Peek with Win + Space", () => app.WinSpaceOn, v => app.SetSetting("winSpacePeek", v));
-            autoStart = Toggle("Start with Windows", () => app.AutoStartOn, app.SetAutoStart);
-            settingsMenu.DropDownItems.AddRange(new WF.ToolStripItem[] { draw, quickHide, quickHideIcons, winSpace, new WF.ToolStripSeparator(), autoStart });
-            menu.Items.Add(settingsMenu);
-            menu.Items.Add("Open data folder", null, (_, __) => app.Open(Storage.Dir));
-            menu.Items.Add(new WF.ToolStripSeparator());
-            menu.Items.Add("Quit DeskFence", null, (_, __) => app.Shutdown());
-            menu.Opening += (_, __) => Refresh();
-
             icon = new WF.NotifyIcon
             {
                 Text = "DeskFence",
                 Icon = LoadIcon(),
-                ContextMenuStrip = menu,
                 Visible = true,
+            };
+            icon.MouseUp += (_, e) =>
+            {
+                if (e.Button == WF.MouseButtons.Right) ShowMenu();
             };
             icon.DoubleClick += (_, __) => app.ToggleQuickHide();
         }
 
-        WF.ToolStripMenuItem Toggle(string text, Func<bool> get, Action<bool> set)
+        void ShowMenu()
         {
-            var item = new WF.ToolStripMenuItem(text) { CheckOnClick = false };
-            item.Click += (_, __) =>
+            var settings = new List<MenuEntry>
             {
-                try
-                {
-                    set(!get());
-                }
-                catch (Exception error)
-                {
-                    Log.Error("Setting " + text, error);
-                }
-                Refresh();
+                MenuEntry.Toggle("Draw fences: right-drag on the Desktop", app.DrawOn, () => Set("drawToCreate", !app.DrawOn)),
+                MenuEntry.Toggle("Quick-hide: double-click the Desktop", app.QuickHideOn, () => Set("quickHide", !app.QuickHideOn)),
+                MenuEntry.Toggle("Quick-hide hides Desktop icons too", app.QuickHideIconsOn, () => Set("quickHideIcons", !app.QuickHideIconsOn)),
+                MenuEntry.Toggle("Peek with Win + Space", app.WinSpaceOn, () => Set("winSpacePeek", !app.WinSpaceOn)),
+                MenuEntry.Separator(),
+                MenuEntry.Toggle("Start with Windows", app.AutoStartOn, () => Safe(() => app.SetAutoStart(!app.AutoStartOn))),
             };
-            item.Tag = get;
-            return item;
+            var entries = new List<MenuEntry>
+            {
+                MenuEntry.Item(Glyphs.NewFence, "New fence", app.StartDrawMode),
+                MenuEntry.Item(app.QuickHidden ? Glyphs.Peek : Glyphs.Hide, app.QuickHidden ? "Show all fences" : "Hide all fences", app.ToggleQuickHide),
+                new MenuEntry { Glyph = Glyphs.Peek, Text = "Peek: fences above windows", Shortcut = "Win+Space", Run = () => app.SetPeek(true) },
+                MenuEntry.Separator(),
+                MenuEntry.Sub(Glyphs.Settings, "Settings", settings),
+                MenuEntry.Item(Glyphs.Data, "Open data folder", () => app.Open(Storage.Dir)),
+                MenuEntry.Separator(),
+                MenuEntry.Item(Glyphs.Power, "Quit DeskFence", app.Shutdown),
+            };
+            FluentMenu.ShowAtCursor(entries);
         }
 
-        public void Refresh()
+        void Set(string key, bool value) => Safe(() => app.SetSetting(key, value));
+
+        static void Safe(Action action)
         {
-            showHide.Text = app.QuickHidden ? "Show all fences" : "Hide all fences";
-            foreach (var item in new[] { draw, quickHide, quickHideIcons, winSpace, autoStart })
-                if (item.Tag is Func<bool> get) item.Checked = get();
+            try
+            {
+                action();
+            }
+            catch (Exception error)
+            {
+                Log.Error("Tray setting", error);
+            }
         }
+
+        /// <summary>Kept for callers that update the tray after a change (the menu is built fresh each time).</summary>
+        public void Refresh() { }
 
         public void Balloon(string message)
         {

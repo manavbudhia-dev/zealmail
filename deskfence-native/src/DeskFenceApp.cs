@@ -478,7 +478,7 @@ namespace DeskFence
                 if (files == null) return;
                 var byPath = fence.Items.OfType<JsonObject>().GroupBy(i => Theme.Str(i["path"]) ?? "", StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
                 var next = new JsonArray();
-                foreach (var f in files.OrderBy(f => f is FileInfo).ThenBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase))
+                foreach (var f in SortInfos(files, Theme.Str(fence.Raw["sortBy"]) ?? "name"))
                 {
                     byPath.TryGetValue(f.FullName, out var previous);
                     var item = new JsonObject
@@ -527,6 +527,62 @@ namespace DeskFence
                 SaveSoon();
                 if (windows.TryGetValue(fence.Id, out var w)) w.Refresh();
             }
+        }
+
+        // ================= Sort by / Refresh =================
+        /// <summary>Folders first (like Explorer), then by name, date modified (newest first), type or size.</summary>
+        static IEnumerable<FileSystemInfo> SortInfos(IEnumerable<FileSystemInfo> files, string key)
+        {
+            var folders = files.OrderBy(f => f is FileInfo ? 1 : 0);
+            switch (key)
+            {
+                case "modified": return folders.ThenByDescending(f => f.LastWriteTimeUtc).ThenBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase);
+                case "type": return folders.ThenBy(f => f is FileInfo ? f.Extension.ToLowerInvariant() : "").ThenBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase);
+                case "size": return folders.ThenBy(f => f is FileInfo fi ? fi.Length : 0).ThenBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase);
+                default: return folders.ThenBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase);
+            }
+        }
+
+        static FileSystemInfo InfoOf(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            if (Directory.Exists(path)) return new DirectoryInfo(path);
+            if (File.Exists(path)) return new FileInfo(path);
+            return null;
+        }
+
+        /// <summary>Arranges the visible items like the Desktop's "Sort by" (a linked folder keeps that order).</summary>
+        public void SortFence(FenceWindow window, string key)
+        {
+            var fence = window.Data;
+            fence.Raw["sortBy"] = key;
+            if (string.IsNullOrEmpty(fence.PortalPath))
+            {
+                var items = fence.Items.OfType<JsonObject>().ToList();
+                // items whose file is gone (shortcut-only references) go last, in their order
+                var withInfo = items.Select(i => (Item: i, Info: InfoOf(Theme.Str(i["path"])))).ToList();
+                var present = withInfo.Where(x => x.Info != null).ToList();
+                var ordered = SortInfos(present.Select(x => x.Info), key).Select(info => present.First(x => x.Info == info).Item).ToList();
+                ordered.AddRange(withInfo.Where(x => x.Info == null).Select(x => x.Item));
+                var next = new JsonArray();
+                foreach (var item in ordered) next.Add(JsonNode.Parse(item.ToJsonString()));
+                fence.ReplaceItems(next);
+            }
+            else
+            {
+                fence.Touch();
+                Reconcile(fence);
+            }
+            SaveSoon();
+            window.Refresh();
+        }
+
+        /// <summary>Re-reads the fence's folder and reloads every icon.</summary>
+        public void RefreshFence(FenceWindow window)
+        {
+            foreach (var item in window.Data.AllItems()) ShellIcons.Forget(Theme.Str(item["path"]) ?? "");
+            Reconcile(window.Data);
+            window.Refresh();
         }
 
         // ================= Quick-hide =================

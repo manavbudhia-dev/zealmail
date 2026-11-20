@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json.Nodes;
 using System.Windows;
@@ -177,29 +178,25 @@ namespace DeskFence
 
         void ShowMenu()
         {
-            var menu = new ContextMenu { PlacementTarget = this };
-            void Add(string text, Action action, bool enabled = true)
-            {
-                var mi = new MenuItem { Header = text, IsEnabled = enabled };
-                mi.Click += (_, __) => action();
-                menu.Items.Add(mi);
-            }
             bool exists = File.Exists(ItemPath) || Directory.Exists(ItemPath);
             bool owns = app.OwnsFile(fence.Data, ItemPath);
+            bool portal = !string.IsNullOrEmpty(fence.Data.PortalPath);
             bool locked = fence.Data.IsLocked;
-
-            Add("Open", () => app.OpenItem(fence, item), exists);
-            Add("Open file location", () => app.ShowInFolder(ItemPath), exists);
-            Add("Copy path", () => { try { Clipboard.SetText(ItemPath); } catch { /* clipboard busy */ } });
-            menu.Items.Add(new Separator());
-            if (owns && string.IsNullOrEmpty(fence.Data.PortalPath))
-                Add("Move back to the Desktop", () => app.MoveItemToDesktop(fence, item), !locked && exists);
+            var entries = new List<MenuEntry>
+            {
+                MenuEntry.Item(Glyphs.Open, "Open", () => app.OpenItem(fence, item), exists),
+                MenuEntry.Item(Glyphs.Folder, "Open file location", () => app.ShowInFolder(ItemPath), exists),
+                MenuEntry.Item(Glyphs.Copy, "Copy path", () => { try { Clipboard.SetText(ItemPath); } catch { /* clipboard busy */ } }),
+                MenuEntry.Separator(),
+            };
+            if (owns && !portal)
+                entries.Add(MenuEntry.Item(Glyphs.Desktop, "Move back to the Desktop", () => app.MoveItemToDesktop(fence, item), !locked && exists));
             // a file the fence owns stays shown while it is in the fence folder: move or delete it instead
-            if (!owns && string.IsNullOrEmpty(fence.Data.PortalPath))
-                Add("Remove from fence", () => app.RemoveItem(fence, item), !locked);
-            if (owns || !string.IsNullOrEmpty(fence.Data.PortalPath))
-                Add("Delete (Recycle Bin)", () => app.DeleteItemFile(fence, item), !locked && exists);
-            menu.IsOpen = true;
+            if (!owns && !portal)
+                entries.Add(MenuEntry.Item(Glyphs.Remove, "Remove from fence", () => app.RemoveItem(fence, item), !locked));
+            if (owns || portal)
+                entries.Add(MenuEntry.Item(Glyphs.Delete, "Delete", () => app.DeleteItemFile(fence, item), !locked && exists));
+            FluentMenu.ShowAtCursor(entries);
         }
     }
 }

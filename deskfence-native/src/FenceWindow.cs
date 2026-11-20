@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
@@ -74,7 +75,11 @@ namespace DeskFence
             DragOver += OnDragOver;
             DragLeave += (_, __) => dropHint.Visibility = Visibility.Collapsed;
             Drop += OnDrop;
-            PreviewMouseDown += (_, __) => selectedItemId = null;
+            PreviewMouseDown += (_, __) =>
+            {
+                selectedItemId = null;
+                FluentMenu.CloseOpen();
+            };
         }
 
         // ================= window plumbing =================
@@ -499,42 +504,63 @@ namespace DeskFence
         // ================= menu =================
         void ShowOptionsMenu(UIElement anchor)
         {
-            var menu = new ContextMenu { PlacementTarget = anchor, Placement = PlacementMode.Bottom };
-            void Add(string text, Action action, bool enabled = true, bool isChecked = false)
-            {
-                var item = new MenuItem { Header = text, IsEnabled = enabled, IsCheckable = isChecked, IsChecked = isChecked };
-                item.Click += (_, __) => action();
-                menu.Items.Add(item);
-            }
             bool locked = Data.IsLocked;
-
-            Add("Rename", StartRename, !locked && !Data.HasTabs);
-            menu.Items.Add(new Separator());
-            if (!Data.AutoRollup)
-                Add(Data.Collapsed ? "Expand" : "Roll up to title", () => { Data.Collapsed = !Data.Collapsed; app.SaveSoon(); ApplyRolledUp(); });
-            Add("Auto roll-up (opens on hover)", () => { Data.AutoRollup = !Data.AutoRollup; Data.Collapsed = false; app.SaveSoon(); ApplyRolledUp(); }, true, Data.AutoRollup);
-            Add(locked ? "Unlock" : "Lock", () => { Data.IsLocked = !locked; app.SaveSoon(); Refresh(); });
-            menu.Items.Add(new Separator());
-            if (string.IsNullOrEmpty(Data.PortalPath))
+            bool portal = !string.IsNullOrEmpty(Data.PortalPath);
+            double px = look.IconPx;
+            string sortBy = Theme.Str(Data.Raw["sortBy"]) ?? "";
+            var entries = new List<MenuEntry>
             {
-                Add("Add tab", () => { Data.AddTab(); app.SaveSoon(); Refresh(); }, !locked);
+                MenuEntry.Sub(Glyphs.View, "View", new List<MenuEntry>
+                {
+                    MenuEntry.Toggle("Large icons", px >= 44, () => SetIconSize(48)),
+                    MenuEntry.Toggle("Medium icons", px >= 30 && px < 44, () => SetIconSize(34)),
+                    MenuEntry.Toggle("Small icons", px < 30, () => SetIconSize(24)),
+                }),
+                MenuEntry.Sub(Glyphs.Sort, "Sort by", new List<MenuEntry>
+                {
+                    MenuEntry.Toggle("Name", sortBy == "name", () => app.SortFence(this, "name"), !locked),
+                    MenuEntry.Toggle("Date modified", sortBy == "modified", () => app.SortFence(this, "modified"), !locked),
+                    MenuEntry.Toggle("Type", sortBy == "type", () => app.SortFence(this, "type"), !locked),
+                    MenuEntry.Toggle("Size", sortBy == "size", () => app.SortFence(this, "size"), !locked),
+                }),
+                MenuEntry.Item(Glyphs.Refresh, "Refresh", () => app.RefreshFence(this)),
+                MenuEntry.Separator(),
+                MenuEntry.Item(Glyphs.Rename, "Rename", StartRename, !locked && !Data.HasTabs),
+            };
+            if (!Data.AutoRollup)
+                entries.Add(MenuEntry.Item(Data.Collapsed ? Glyphs.Down : Glyphs.Up, Data.Collapsed ? "Expand" : "Roll up to title",
+                    () => { Data.Collapsed = !Data.Collapsed; app.SaveSoon(); ApplyRolledUp(); }));
+            entries.Add(MenuEntry.Toggle("Auto roll-up (opens on hover)", Data.AutoRollup,
+                () => { Data.AutoRollup = !Data.AutoRollup; Data.Collapsed = false; app.SaveSoon(); ApplyRolledUp(); }));
+            entries.Add(MenuEntry.Item(locked ? Glyphs.Unlock : Glyphs.Lock, locked ? "Unlock" : "Lock", () => { Data.IsLocked = !locked; app.SaveSoon(); Refresh(); }));
+            entries.Add(MenuEntry.Separator());
+            if (!portal)
+            {
+                entries.Add(MenuEntry.Item(Glyphs.Add, "New tab", () => { Data.AddTab(); app.SaveSoon(); Refresh(); }, !locked));
                 if (Data.HasTabs)
                 {
                     string active = Data.ActiveTabId;
-                    Add("Rename this tab", () => RenameTab(active), !locked);
-                    Add("Close this tab (items move to the next tab)", () => { Data.RemoveTab(active); app.SaveSoon(); Refresh(); }, !locked);
+                    entries.Add(MenuEntry.Item(Glyphs.Rename, "Rename this tab", () => RenameTab(active), !locked));
+                    entries.Add(MenuEntry.Item(Glyphs.Close, "Close this tab", () => { Data.RemoveTab(active); app.SaveSoon(); Refresh(); }, !locked));
                 }
             }
-            string folder = !string.IsNullOrEmpty(Data.PortalPath) ? Data.PortalPath : Data.StoragePath;
+            string folder = portal ? Data.PortalPath : Data.StoragePath;
             if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
-                Add("Open folder in File Explorer", () => app.Open(folder));
-            if (string.IsNullOrEmpty(Data.PortalPath))
-                Add("Show a folder in this fence…", () => app.LinkFolder(this), !locked && !Data.HasTabs);
-            else
-                Add("Stop showing the folder", () => app.UnlinkFolder(this), !locked);
-            menu.Items.Add(new Separator());
-            Add("Delete fence", () => app.DeleteFence(this), !locked);
-            menu.IsOpen = true;
+                entries.Add(MenuEntry.Item(Glyphs.Folder, "Open folder in File Explorer", () => app.Open(folder)));
+            entries.Add(portal
+                ? MenuEntry.Item(Glyphs.Unlink, "Stop showing the folder", () => app.UnlinkFolder(this), !locked)
+                : MenuEntry.Item(Glyphs.Link, "Show a folder in this fence…", () => app.LinkFolder(this), !locked && !Data.HasTabs));
+            entries.Add(MenuEntry.Separator());
+            entries.Add(MenuEntry.Item(Glyphs.Delete, "Delete fence", () => app.DeleteFence(this), !locked));
+            FluentMenu.ShowAtCursor(entries);
+        }
+
+        void SetIconSize(int px)
+        {
+            Data.Style["iconPx"] = px;
+            Data.Touch();
+            app.SaveSoon();
+            Refresh();
         }
 
         // ================= drag & drop in =================
