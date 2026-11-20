@@ -309,6 +309,8 @@ namespace DeskFence
             StyleSearchBox(detailsSearch, "Search");
             Grid.SetColumn(detailsSearch, 1);
             detailsHeader.Children.Add(detailsSearch);
+            Grid.SetColumn(searchHints[detailsSearch], 1);
+            detailsHeader.Children.Add(searchHints[detailsSearch]);
             Grid.SetColumn(detailsHeader, 0);
             Grid.SetColumnSpan(detailsHeader, 3);
             header.Children.Add(detailsHeader);
@@ -351,7 +353,7 @@ namespace DeskFence
 
             // search box under the title (icon view)
             StyleSearchBox(searchBox, "Search this fence…");
-            searchBar.Child = searchBox;
+            searchBar.Child = new Grid { Children = { searchBox, searchHints[searchBox] } };
             searchBar.Padding = new Thickness(8, 0, 8, 6);
             searchBar.Visibility = Visibility.Collapsed;
             Grid.SetRow(searchBar, 1);
@@ -362,7 +364,7 @@ namespace DeskFence
             browseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             browseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             browseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var back = SmallButton("\uE72B  Back", "Back", () => GoUp());
+            var back = SmallButton("\uE72B", "Back", "Back", () => GoUp());
             browseGrid.Children.Add(back);
             browseName.VerticalAlignment = VerticalAlignment.Center;
             browseName.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -370,7 +372,7 @@ namespace DeskFence
             browseName.Opacity = 0.8;
             Grid.SetColumn(browseName, 1);
             browseGrid.Children.Add(browseName);
-            var openHere = SmallButton("\uE8A7", "Open this folder in File Explorer", () => { if (browsePath != null) app.Open(browsePath); });
+            var openHere = SmallButton("\uE8A7", null, "Open this folder in File Explorer", () => { if (browsePath != null) app.Open(browsePath); });
             Grid.SetColumn(openHere, 2);
             browseGrid.Children.Add(openHere);
             browseBar.Child = browseGrid;
@@ -428,11 +430,24 @@ namespace DeskFence
             Content = frame;
         }
 
-        Button SmallButton(string text, string tip, Action click)
+        static readonly FontFamily IconFont = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
+        readonly System.Collections.Generic.Dictionary<TextBox, TextBlock> searchHints = new System.Collections.Generic.Dictionary<TextBox, TextBlock>();
+
+        // the icon in Windows' icon font, the words in the normal font (the icon font has no letters)
+        static UIElement IconAndText(string glyph, string text, double size)
+        {
+            var panel = new StackPanel { Orientation = Orientation.Horizontal };
+            panel.Children.Add(new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = size, VerticalAlignment = VerticalAlignment.Center });
+            if (!string.IsNullOrEmpty(text))
+                panel.Children.Add(new TextBlock { Text = text, FontSize = size, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            return panel;
+        }
+
+        Button SmallButton(string glyph, string text, string tip, Action click)
         {
             var b = new Button
             {
-                Content = new TextBlock { Text = text, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI"), FontSize = 11 },
+                Content = IconAndText(glyph, text, 11),
                 Padding = new Thickness(6, 2, 6, 2),
                 Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)),
                 BorderThickness = new Thickness(0),
@@ -453,6 +468,21 @@ namespace DeskFence
             box.Padding = new Thickness(6, 2, 6, 2);
             box.ToolTip = placeholder;
             box.Tag = placeholder;
+            // a "🔍 Search" hint over the box while it is empty and not being typed in
+            var hint = new TextBlock { Opacity = 0.55, IsHitTestVisible = false, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+            hint.Inlines.Add(new System.Windows.Documents.Run("\uE721") { FontFamily = IconFont });
+            hint.Inlines.Add(new System.Windows.Documents.Run("  " + placeholder));
+            searchHints[box] = hint;
+            void ShowHint()
+            {
+                hint.Foreground = box.Foreground;
+                hint.FontSize = box.FontSize;
+                hint.Visibility = string.IsNullOrEmpty(box.Text) && !box.IsKeyboardFocused ? Visibility.Visible : Visibility.Collapsed;
+            }
+            box.Loaded += (_, __) => ShowHint();
+            box.TextChanged += (_, __) => ShowHint();
+            box.GotKeyboardFocus += (_, __) => ShowHint();
+            box.LostKeyboardFocus += (_, __) => ShowHint();
             // typing needs the keyboard, which a fence normally never takes
             box.PreviewMouseDown += (_, __) => { if (!box.IsKeyboardFocused) OpenSearch(box); };
             box.TextChanged += (_, __) =>
@@ -581,7 +611,9 @@ namespace DeskFence
             detailsSearch.CaretBrush = label;
             detailsSearch.FontSize = Math.Max(11, look.LabelSize - 1);
             browseName.Foreground = label;
-            detailsTitle.Text = "\uE8B7  " + Data.Name;
+            detailsTitle.Inlines.Clear();
+            detailsTitle.Inlines.Add(new System.Windows.Documents.Run("\uE8B7") { FontFamily = IconFont, Foreground = new SolidColorBrush(Color.FromRgb(233, 168, 37)) });
+            detailsTitle.Inlines.Add(new System.Windows.Documents.Run("  " + Data.Name));
             detailsTitle.Foreground = label;
             detailsTitle.FontSize = look.LabelSize;
             if (detailsHeader.Children[0] is Border pill) pill.Background = Theme.Brush(look.TabActive);
