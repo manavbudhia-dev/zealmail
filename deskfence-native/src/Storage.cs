@@ -51,6 +51,11 @@ namespace DeskFence
 
         public static void SaveSettings(JsonObject settings) => WriteJson(SettingsFile, settings, keepBackup: false);
 
+        /// <summary>widgets.json: the clock and to-do widgets (positions, options, tasks).</summary>
+        public static JsonObject LoadWidgets() => ReadJson(Path.Combine(Dir, "widgets.json")) as JsonObject ?? new JsonObject();
+
+        public static void SaveWidgets(JsonObject widgets) => WriteJson(Path.Combine(Dir, "widgets.json"), widgets, keepBackup: true);
+
         static JsonNode ReadJson(string file)
         {
             try

@@ -44,6 +44,11 @@ namespace DeskFence
                 MenuEntry.Item(app.QuickHidden ? Glyphs.Peek : Glyphs.Hide, app.QuickHidden ? "Show all fences" : "Hide all fences", app.ToggleQuickHide),
                 new MenuEntry { Glyph = Glyphs.Peek, Text = "Peek: fences above windows", Shortcut = "Win+Space", Run = () => app.SetPeek(true) },
                 MenuEntry.Toggle("Privacy mode (hide all fence contents)", app.PrivacyAll, () => Safe(() => app.SetPrivacyAll(!app.PrivacyAll))),
+                MenuEntry.Sub(Glyphs.Clock, "Widgets", new List<MenuEntry>
+                {
+                    MenuEntry.Toggle("Big clock", app.WidgetEnabled("clock"), () => app.SetWidgetEnabled("clock", !app.WidgetEnabled("clock"))),
+                    MenuEntry.Toggle("To-do list", app.WidgetEnabled("todo"), () => app.SetWidgetEnabled("todo", !app.WidgetEnabled("todo"))),
+                }),
                 MenuEntry.Separator(),
                 MenuEntry.Item(Glyphs.Organize, "Organize my Desktop…", app.OrganizeDesktop),
                 MenuEntry.Item(Glyphs.Rules, "Automation rules…", app.OpenAutomation),

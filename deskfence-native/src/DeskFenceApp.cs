@@ -50,6 +50,7 @@ namespace DeskFence
             foreach (var fence in fences) OpenWindow(fence);
             foreach (var fence in fences) Reconcile(fence);
             RulesChanged(); // watch the folders the automation rules name
+            OpenWidgets(); // clock / to-do, if switched on
 
             hooks = new DesktopHooks(ui);
             hooks.QuickHideRequested += _ => ToggleQuickHide();
@@ -117,11 +118,13 @@ namespace DeskFence
             windows.Clear();
             foreach (var fence in fences) OpenWindow(fence);
             if (QuickHidden) foreach (var w in windows.Values) w.Hide();
+            RebuildWidgets();
         }
 
         public void Shutdown()
         {
             SaveNow();
+            SaveWidgetsNow();
             if (iconsHiddenByUs) DesktopIcons.SetHidden(false); // never leave the Desktop icons hidden
             tray?.Dispose();
             foreach (var watcher in watchers.Values) watcher.Dispose();
@@ -605,6 +608,7 @@ namespace DeskFence
                     w.SendToBottom();
                 }
             }
+            WidgetsQuickHidden(hidden);
             // the real Desktop icons go and come back with the fences (only if we hid them)
             if (QuickHideIconsOn && hidden && !DesktopIcons.AreHidden())
             {
@@ -635,12 +639,14 @@ namespace DeskFence
                     dims.Add(dim);
                 }
                 foreach (var w in windows.Values) w.SetTopmost(true); // above the dimmed screen
+                WidgetsPeek(true);
             }
             else
             {
                 foreach (var dim in dims) dim.Close();
                 dims.Clear();
                 foreach (var w in windows.Values) w.SetTopmost(false); // back down onto the Desktop
+                WidgetsPeek(false);
             }
         }
 

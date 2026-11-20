@@ -59,6 +59,7 @@ namespace DeskFence
             settings["privacyMode"] = on;
             Storage.SaveSettings(settings);
             foreach (var w in windows.Values) w.Refresh();
+            WidgetsPrivacyChanged();
         }
 
         // ================= Folder Portal: a sub-folder's items (not stored) =================
@@ -347,6 +348,113 @@ namespace DeskFence
             RulesChanged();
             int moved = SortExisting(rules);
             Notice($"{moved} item(s) moved off the Desktop into fences.");
+        }
+
+        // ================= Desktop widgets: big clock, to-do list =================
+        JsonObject widgetsState;
+        readonly Dictionary<string, DesktopWidget> widgets = new Dictionary<string, DesktopWidget>();
+        DispatcherTimer widgetsSaveTimer;
+
+        JsonObject WidgetState(string key)
+        {
+            widgetsState ??= Storage.LoadWidgets();
+            if (widgetsState[key] is not JsonObject state)
+            {
+                state = new JsonObject();
+                widgetsState[key] = state;
+            }
+            return state;
+        }
+
+        public bool WidgetEnabled(string key) => WidgetState(key)["enabled"] is JsonValue v && v.TryGetValue(out bool b) && b;
+
+        public void SetWidgetEnabled(string key, bool on)
+        {
+            WidgetState(key)["enabled"] = on;
+            SaveWidgetsSoon();
+            if (on) OpenWidget(key);
+            else if (widgets.TryGetValue(key, out var w))
+            {
+                widgets.Remove(key);
+                w.Close();
+            }
+        }
+
+        void OpenWidgets()
+        {
+            foreach (var key in new[] { "clock", "todo" })
+                if (WidgetEnabled(key)) OpenWidget(key);
+        }
+
+        void OpenWidget(string key)
+        {
+            if (widgets.ContainsKey(key)) return;
+            DesktopWidget w = key == "clock" ? new ClockWidget(this, WidgetState(key)) : new TodoWidget(this, WidgetState(key));
+            widgets[key] = w;
+            // an owned window dies with the Desktop window (Explorer restart): bring it back
+            w.Closed += (_, __) =>
+            {
+                if (!widgets.TryGetValue(key, out var current) || current != w) return;
+                widgets.Remove(key);
+                ui.BeginInvoke(DispatcherPriority.Background, new Action(() => { if (WidgetEnabled(key)) OpenWidget(key); }));
+            };
+            w.Show();
+            if (QuickHidden) w.Hide();
+        }
+
+        public void SaveWidgetsSoon()
+        {
+            if (widgetsSaveTimer == null)
+            {
+                widgetsSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+                widgetsSaveTimer.Tick += (_, __) => { widgetsSaveTimer.Stop(); SaveWidgetsNow(); };
+            }
+            widgetsSaveTimer.Stop();
+            widgetsSaveTimer.Start();
+        }
+
+        void SaveWidgetsNow()
+        {
+            if (widgetsState == null) return;
+            try
+            {
+                Storage.SaveWidgets(widgetsState);
+            }
+            catch (Exception error)
+            {
+                Log.Error("Saving widgets", error);
+            }
+        }
+
+        // the widgets follow Quick-hide, Peek and privacy like the fences
+        void WidgetsQuickHidden(bool hidden)
+        {
+            foreach (var w in widgets.Values)
+            {
+                if (hidden) w.Hide();
+                else { w.Show(); w.SendToBottom(); }
+            }
+        }
+
+        void WidgetsPeek(bool on)
+        {
+            foreach (var w in widgets.Values) w.SetTopmost(on);
+        }
+
+        void WidgetsPrivacyChanged()
+        {
+            foreach (var w in widgets.Values.OfType<TodoWidget>()) w.ApplyMask();
+        }
+
+        void RebuildWidgets()
+        {
+            foreach (var key in widgets.Keys.ToList())
+            {
+                var w = widgets[key];
+                widgets.Remove(key);
+                w.Close();
+            }
+            OpenWidgets();
         }
     }
 }
