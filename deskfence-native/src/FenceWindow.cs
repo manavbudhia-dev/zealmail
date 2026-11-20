@@ -43,6 +43,30 @@ namespace DeskFence
         bool hovered;
         string selectedItemId;
 
+        // search, browsing a sub-folder, Details view, privacy (view state only, never saved)
+        readonly Button searchButton = new Button();
+        readonly Border searchBar = new Border();
+        readonly TextBox searchBox = new TextBox();
+        readonly Grid detailsHeader = new Grid();
+        readonly TextBlock detailsTitle = new TextBlock();
+        readonly TextBox detailsSearch = new TextBox();
+        readonly Border browseBar = new Border();
+        readonly TextBlock browseName = new TextBlock();
+        readonly StackPanel detailsPanel = new StackPanel();
+        readonly Border privacyOverlay = new Border();
+        readonly DispatcherTimer revealTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        string search; // null = no search box (icon view)
+        string browsePath;
+        List<JsonObject> browseItems;
+        string detailsSort = "name";
+        bool detailsAscending = true;
+        bool revealed;
+        /// <summary>A dialog of this fence (Customize, Rules) is open: never mask it while you work on it.</summary>
+        public bool DialogOpen { get; set; }
+
+        bool Details => (Theme.Str(Data.Raw["view"]) ?? (string.IsNullOrEmpty(Data.PortalPath) ? "icons" : "details")) == "details";
+        bool IsPrivate => (Data.Raw["privacy"] is JsonValue pv && pv.TryGetValue(out bool pb) && pb) || app.PrivacyAll;
+
         public FenceWindow(DeskFenceApp app, FenceData data)
         {
             this.app = app;
@@ -66,6 +90,12 @@ namespace DeskFence
 
             MouseEnter += (_, __) => SetHovered(true);
             MouseLeave += (_, __) => SetHovered(false);
+            revealTimer.Tick += (_, __) =>
+            {
+                revealTimer.Stop();
+                revealed = true;
+                ApplyMask();
+            };
             rollupTimer.Tick += (_, __) =>
             {
                 rollupTimer.Stop();
@@ -73,7 +103,11 @@ namespace DeskFence
             };
             DragEnter += OnDragOver;
             DragOver += OnDragOver;
-            DragLeave += (_, __) => dropHint.Visibility = Visibility.Collapsed;
+            DragLeave += (_, __) =>
+            {
+                dropHint.Visibility = Visibility.Collapsed;
+                ApplyMask(); // a private fence hides again when the drag leaves
+            };
             Drop += OnDrop;
             PreviewMouseDown += (_, __) =>
             {
@@ -188,14 +222,17 @@ namespace DeskFence
         void BuildChrome()
         {
             var root = new Grid();
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // header
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // search box (icon view)
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // inside a sub-folder
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // items
 
             // header: centered title (or tabs) + the options button that shows on hover
             header.Background = Brushes.Transparent; // hit-testable, so the whole bar drags
             header.Cursor = Cursors.SizeAll;
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
 
             title.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -222,7 +259,7 @@ namespace DeskFence
             tabsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
             tabsPanel.Visibility = Visibility.Collapsed;
             Grid.SetColumn(tabsPanel, 0);
-            Grid.SetColumnSpan(tabsPanel, 2);
+            Grid.SetColumnSpan(tabsPanel, 3);
             header.Children.Add(tabsPanel);
 
             optionsButton.Content = "⋯";
@@ -236,8 +273,45 @@ namespace DeskFence
             optionsButton.ToolTip = "Fence options";
             optionsButton.Focusable = false;
             optionsButton.Click += (_, __) => ShowOptionsMenu(optionsButton);
-            Grid.SetColumn(optionsButton, 2);
+            Grid.SetColumn(optionsButton, 3);
             header.Children.Add(optionsButton);
+
+            searchButton.Content = new TextBlock { Text = "\uE721", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 12 };
+            searchButton.Width = 22;
+            searchButton.Height = 22;
+            searchButton.Padding = new Thickness(0);
+            searchButton.Background = Brushes.Transparent;
+            searchButton.BorderThickness = new Thickness(0);
+            searchButton.Cursor = Cursors.Hand;
+            searchButton.Opacity = 0;
+            searchButton.Focusable = false;
+            searchButton.ToolTip = "Search this fence";
+            searchButton.Click += (_, __) =>
+            {
+                if (search == null) OpenSearch(searchBox);
+                else CloseSearch();
+            };
+            Grid.SetColumn(searchButton, 2);
+            header.Children.Add(searchButton);
+
+            // Details view: the name as a tab on the left, a search box on the right (Folder Portal look)
+            detailsHeader.Visibility = Visibility.Collapsed;
+            detailsHeader.Margin = new Thickness(6, 4, 0, 4);
+            detailsHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            detailsHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            detailsTitle.FontWeight = FontWeights.SemiBold;
+            detailsTitle.TextTrimming = TextTrimming.CharacterEllipsis;
+            detailsTitle.HorizontalAlignment = HorizontalAlignment.Center;
+            detailsTitle.VerticalAlignment = VerticalAlignment.Center;
+            var pill = new Border { Child = detailsTitle, CornerRadius = new CornerRadius(4), Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 0, 6, 0) };
+            pill.Name = "pill";
+            detailsHeader.Children.Add(pill);
+            StyleSearchBox(detailsSearch, "Search");
+            Grid.SetColumn(detailsSearch, 1);
+            detailsHeader.Children.Add(detailsSearch);
+            Grid.SetColumn(detailsHeader, 0);
+            Grid.SetColumnSpan(detailsHeader, 3);
+            header.Children.Add(detailsHeader);
 
             header.MouseLeftButtonDown += (_, e) =>
             {
@@ -263,6 +337,7 @@ namespace DeskFence
             var bodyGrid = new Grid();
             itemsPanel.Orientation = Orientation.Horizontal;
             bodyGrid.Children.Add(itemsPanel);
+            bodyGrid.Children.Add(detailsPanel);
             emptyText.HorizontalAlignment = HorizontalAlignment.Center;
             emptyText.VerticalAlignment = VerticalAlignment.Center;
             emptyText.Opacity = 0.5;
@@ -271,8 +346,54 @@ namespace DeskFence
             bodyGrid.Children.Add(emptyText);
             body.Content = bodyGrid;
             body.MouseLeftButtonDown += (_, __) => Select(null);
-            Grid.SetRow(body, 1);
+            Grid.SetRow(body, 3);
             root.Children.Add(body);
+
+            // search box under the title (icon view)
+            StyleSearchBox(searchBox, "Search this fence…");
+            searchBar.Child = searchBox;
+            searchBar.Padding = new Thickness(8, 0, 8, 6);
+            searchBar.Visibility = Visibility.Collapsed;
+            Grid.SetRow(searchBar, 1);
+            root.Children.Add(searchBar);
+
+            // inside a sub-folder of the folder this fence shows: Back, its name, open in Explorer
+            var browseGrid = new Grid();
+            browseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            browseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            browseGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var back = SmallButton("\uE72B  Back", "Back", () => GoUp());
+            browseGrid.Children.Add(back);
+            browseName.VerticalAlignment = VerticalAlignment.Center;
+            browseName.TextTrimming = TextTrimming.CharacterEllipsis;
+            browseName.Margin = new Thickness(8, 0, 8, 0);
+            browseName.Opacity = 0.8;
+            Grid.SetColumn(browseName, 1);
+            browseGrid.Children.Add(browseName);
+            var openHere = SmallButton("\uE8A7", "Open this folder in File Explorer", () => { if (browsePath != null) app.Open(browsePath); });
+            Grid.SetColumn(openHere, 2);
+            browseGrid.Children.Add(openHere);
+            browseBar.Child = browseGrid;
+            browseBar.Padding = new Thickness(8, 0, 8, 4);
+            browseBar.Visibility = Visibility.Collapsed;
+            Grid.SetRow(browseBar, 2);
+            root.Children.Add(browseBar);
+
+            // privacy: contents blurred until the mouse rests on the fence
+            privacyOverlay.IsHitTestVisible = false;
+            privacyOverlay.Visibility = Visibility.Collapsed;
+            privacyOverlay.Child = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(110, 0, 0, 0)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8, 2, 8, 2),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = "Private · hover to show", Foreground = Brushes.White, FontSize = 11 },
+            };
+            Grid.SetRow(privacyOverlay, 1);
+            Grid.SetRowSpan(privacyOverlay, 3);
+            root.Children.Add(privacyOverlay);
 
             // a dashed outline while files are dragged over the fence
             dropHint.BorderThickness = new Thickness(2);
@@ -281,7 +402,7 @@ namespace DeskFence
             dropHint.IsHitTestVisible = false;
             dropHint.Visibility = Visibility.Collapsed;
             dropHint.Margin = new Thickness(3);
-            Grid.SetRowSpan(dropHint, 2);
+            Grid.SetRowSpan(dropHint, 4);
             root.Children.Add(dropHint);
 
             // resize corner (shows on hover)
@@ -299,12 +420,117 @@ namespace DeskFence
                 Height = Math.Max(60 + Pad * 2, Height + e.VerticalChange);
             };
             resizeGrip.DragCompleted += (_, __) => SaveBounds();
-            Grid.SetRow(resizeGrip, 1);
+            Grid.SetRow(resizeGrip, 3);
             root.Children.Add(resizeGrip);
 
             frame.Child = root;
             frame.Margin = new Thickness(Pad); // room for the shadow
             Content = frame;
+        }
+
+        Button SmallButton(string text, string tip, Action click)
+        {
+            var b = new Button
+            {
+                Content = new TextBlock { Text = text, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI"), FontSize = 11 },
+                Padding = new Thickness(6, 2, 6, 2),
+                Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)),
+                BorderThickness = new Thickness(0),
+                Cursor = Cursors.Hand,
+                Focusable = false,
+                ToolTip = tip,
+                Template = FluentWindow.PlainButton(Color.FromArgb(60, 255, 255, 255)),
+            };
+            b.Click += (_, __) => click();
+            return b;
+        }
+
+        void StyleSearchBox(TextBox box, string placeholder)
+        {
+            box.Background = new SolidColorBrush(Color.FromArgb(60, 0, 0, 0));
+            box.BorderThickness = new Thickness(0, 0, 0, 1);
+            box.BorderBrush = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255));
+            box.Padding = new Thickness(6, 2, 6, 2);
+            box.ToolTip = placeholder;
+            box.Tag = placeholder;
+            // typing needs the keyboard, which a fence normally never takes
+            box.PreviewMouseDown += (_, __) => { if (!box.IsKeyboardFocused) OpenSearch(box); };
+            box.TextChanged += (_, __) =>
+            {
+                search = box.Text;
+                BuildItems();
+            };
+            box.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Escape) CloseSearch();
+            };
+            box.LostKeyboardFocus += (_, __) =>
+            {
+                if (titleEdit.Visibility != Visibility.Visible) AllowFocus(false);
+                if (box == searchBox && string.IsNullOrEmpty(box.Text)) CloseSearch();
+            };
+        }
+
+        void OpenSearch(TextBox box)
+        {
+            search ??= "";
+            if (box == searchBox) searchBar.Visibility = Visibility.Visible;
+            AllowFocus(true);
+            box.Focus();
+            Keyboard.Focus(box);
+        }
+
+        void CloseSearch()
+        {
+            search = Details ? "" : null;
+            searchBox.Text = "";
+            detailsSearch.Text = "";
+            searchBar.Visibility = Visibility.Collapsed;
+            AllowFocus(false);
+            SendToBottom();
+            BuildItems();
+        }
+
+        // ================= Folder Portal: browse into sub-folders =================
+        /// <summary>Shows a sub-folder of the linked folder inside the fence.</summary>
+        public void Browse(string folder)
+        {
+            var items = app.ListFolder(folder);
+            if (items == null)
+            {
+                app.Notice("Cannot open " + Path.GetFileName(folder));
+                return;
+            }
+            browsePath = folder;
+            browseItems = items;
+            Refresh();
+        }
+
+        void GoUp()
+        {
+            if (browsePath == null || string.IsNullOrEmpty(Data.PortalPath)) return;
+            string parent = Path.GetDirectoryName(browsePath.TrimEnd('\\', '/'));
+            if (parent == null || !FileOps.IsInside(parent, Data.PortalPath))
+            {
+                browsePath = null;
+                browseItems = null;
+                Refresh();
+            }
+            else
+            {
+                Browse(parent);
+            }
+        }
+
+        // ================= privacy =================
+        void ApplyMask()
+        {
+            bool masked = IsPrivate && !revealed && !DialogOpen && dropHint.Visibility != Visibility.Visible && titleEdit.Visibility != Visibility.Visible;
+            body.Effect = masked ? new BlurEffect { Radius = 14, RenderingBias = RenderingBias.Performance } : null;
+            body.IsHitTestVisible = !masked;
+            searchBar.Opacity = masked ? 0 : 1;
+            browseBar.Opacity = masked ? 0 : 1;
+            privacyOverlay.Visibility = masked && body.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         }
 
         static ControlTemplate GripTemplate()
@@ -336,7 +562,10 @@ namespace DeskFence
 
             var label = Theme.Brush(look.Label);
             header.Background = look.HasTitleBar ? Theme.Brush(look.TitleBar) : Brushes.Transparent;
-            title.Text = Data.Name + (Data.IsLocked ? "  🔒" : "") + (string.IsNullOrEmpty(Data.PortalPath) ? "" : "  🔗");
+            title.Inlines.Clear();
+            if (look.CompactHeader)
+                title.Inlines.Add(new System.Windows.Documents.Run("\uE8B7  ") { FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), Foreground = new SolidColorBrush(Color.FromRgb(233, 168, 37)) });
+            title.Inlines.Add(new System.Windows.Documents.Run(Data.Name + (Data.IsLocked ? "  🔒" : "") + (string.IsNullOrEmpty(Data.PortalPath) ? "" : "  🔗")));
             title.Foreground = label;
             title.FontSize = look.LabelSize;
             title.HorizontalAlignment = look.TitleLeft ? HorizontalAlignment.Left : HorizontalAlignment.Center;
@@ -345,12 +574,41 @@ namespace DeskFence
             titleEdit.FontSize = look.LabelSize;
             optionsButton.Foreground = label;
             optionsButton.FontSize = look.LabelSize + 2;
+            searchButton.Foreground = label;
+            searchBox.Foreground = label;
+            searchBox.CaretBrush = label;
+            detailsSearch.Foreground = label;
+            detailsSearch.CaretBrush = label;
+            detailsSearch.FontSize = Math.Max(11, look.LabelSize - 1);
+            browseName.Foreground = label;
+            detailsTitle.Text = "\uE8B7  " + Data.Name;
+            detailsTitle.Foreground = label;
+            detailsTitle.FontSize = look.LabelSize;
+            if (detailsHeader.Children[0] is Border pill) pill.Background = Theme.Brush(look.TabActive);
+
+            // a different (or no) linked folder: back to its top level
+            if (browsePath != null && (string.IsNullOrEmpty(Data.PortalPath) || !FileOps.IsInside(browsePath, Data.PortalPath)))
+            {
+                browsePath = null;
+                browseItems = null;
+            }
+            // re-read the sub-folder being browsed (an item may have been deleted or moved)
+            if (browsePath != null) browseItems = app.ListFolder(browsePath) ?? new List<JsonObject>();
+            browseBar.Visibility = browsePath != null ? Visibility.Visible : Visibility.Collapsed;
+            browseName.Text = browsePath != null ? Path.GetFileName(browsePath.TrimEnd('\\', '/')) : "";
+            bool detailsTop = Details && !Data.HasTabs && titleEdit.Visibility != Visibility.Visible;
+            detailsHeader.Visibility = detailsTop ? Visibility.Visible : Visibility.Collapsed;
+            if (Details && search == null) search = "";
+            if (!Details && search == "" && !searchBox.IsKeyboardFocused) search = null;
+            searchBar.Visibility = !Details && search != null ? Visibility.Visible : Visibility.Collapsed;
             emptyText.Foreground = label;
             emptyText.Text = string.IsNullOrEmpty(Data.PortalPath) ? "Drop files here" : "This folder is empty";
 
             BuildTabs(label);
+            if (detailsHeader.Visibility == Visibility.Visible) title.Visibility = Visibility.Collapsed;
             BuildItems();
             ApplyRolledUp();
+            ApplyMask();
         }
 
         void BuildTabs(Brush label)
@@ -407,21 +665,105 @@ namespace DeskFence
         void BuildItems()
         {
             itemsPanel.Children.Clear();
-            double cell = Math.Max(54, look.IconPx + 22);
-            var items = Data.Items.OfType<JsonObject>().ToList();
-            foreach (var item in items)
+            detailsPanel.Children.Clear();
+            bool readOnly = browsePath != null;
+            var source = readOnly ? browseItems : Data.Items.OfType<JsonObject>().ToList();
+            string query = (search ?? "").Trim();
+            var items = source.Where(i => query.Length == 0 || (Theme.Str(i["name"]) ?? "").IndexOf(query, StringComparison.CurrentCultureIgnoreCase) >= 0).ToList();
+
+            if (Details)
             {
-                var tile = new ItemTile(app, this, item, look, cell);
-                tile.IsSelected = Theme.Str(item["id"]) == selectedItemId;
-                itemsPanel.Children.Add(tile);
+                itemsPanel.Visibility = Visibility.Collapsed;
+                detailsPanel.Visibility = Visibility.Visible;
+                var columns = ItemRow.ColumnsFor(Data.Width);
+                if (items.Count > 0) detailsPanel.Children.Add(DetailsColumnHeader(columns));
+                foreach (var item in SortForDetails(items))
+                {
+                    var row = new ItemRow(app, this, item, look, columns, readOnly) { IsSelected = Theme.Str(item["id"]) == selectedItemId };
+                    detailsPanel.Children.Add(row);
+                }
             }
+            else
+            {
+                itemsPanel.Visibility = Visibility.Visible;
+                detailsPanel.Visibility = Visibility.Collapsed;
+                double cell = Math.Max(54, look.IconPx + 22);
+                if (look.Columns > 0)
+                    cell = Math.Max(40, Math.Floor((Data.Width - 8 - look.BorderWidth * 2 - 18) / look.Columns)); // fixed number of columns
+                foreach (var item in items)
+                {
+                    var tile = new ItemTile(app, this, item, look, cell, readOnly) { IsSelected = Theme.Str(item["id"]) == selectedItemId };
+                    itemsPanel.Children.Add(tile);
+                }
+            }
+            emptyText.Text = query.Length > 0 ? "Nothing matches" : readOnly || !string.IsNullOrEmpty(Data.PortalPath) ? "This folder is empty" : "Drop files here";
             emptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        UIElement DetailsColumnHeader(string[] columns)
+        {
+            var grid = new Grid { Margin = new Thickness(6, 0, 6, 2) };
+            var brush = Theme.Brush(look.Label);
+            for (int i = 0; i < columns.Length; i++)
+            {
+                string column = columns[i];
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = ItemRow.WidthOf(column) });
+                string label = column switch { "name" => "Name", "modified" => "Date modified", "type" => "Type", _ => "Size" };
+                if (detailsSort == column) label += detailsAscending ? "  ▴" : "  ▾";
+                var text = new TextBlock
+                {
+                    Text = label,
+                    Foreground = brush,
+                    Opacity = 0.75,
+                    FontSize = Math.Max(11, look.ItemLabelSize + 2),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    TextAlignment = column == "size" ? TextAlignment.Right : TextAlignment.Left,
+                    Padding = new Thickness(column == "name" ? 0 : 8, 3, 0, 3),
+                };
+                var cell = new Border
+                {
+                    Child = text,
+                    Background = Brushes.Transparent,
+                    Cursor = Cursors.Hand,
+                    ToolTip = "Sort",
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                    BorderThickness = new Thickness(i == 0 ? 0 : 1, 0, 0, 1),
+                };
+                cell.MouseLeftButtonUp += (_, e) =>
+                {
+                    detailsAscending = detailsSort == column ? !detailsAscending : true;
+                    detailsSort = column;
+                    BuildItems();
+                    e.Handled = true;
+                };
+                Grid.SetColumn(cell, i);
+                grid.Children.Add(cell);
+            }
+            return grid;
+        }
+
+        // Folders first (like Explorer), then by the clicked column
+        IEnumerable<JsonObject> SortForDetails(List<JsonObject> items)
+        {
+            var withInfo = items.Select(i => (Item: i, Info: ItemRow.FileInfoOf(Theme.Str(i["path"]) ?? ""), Name: Theme.Str(i["name"]) ?? "")).ToList();
+            IOrderedEnumerable<(JsonObject Item, FileSystemInfo Info, string Name)> ordered =
+                withInfo.OrderBy(x => x.Info is DirectoryInfo || Theme.Str(x.Item["type"]) == "folder" ? 0 : 1);
+            Func<(JsonObject Item, FileSystemInfo Info, string Name), object> key = detailsSort switch
+            {
+                "modified" => x => x.Info?.LastWriteTimeUtc ?? DateTime.MinValue,
+                "type" => x => ItemRow.TypeLabel(x.Name, x.Info is DirectoryInfo),
+                "size" => x => x.Info is FileInfo f ? f.Length : 0L,
+                _ => x => x.Name.ToLowerInvariant(),
+            };
+            ordered = detailsAscending ? ordered.ThenBy(key) : ordered.ThenByDescending(key);
+            return ordered.ThenBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).Select(x => x.Item);
         }
 
         public void Select(string itemId)
         {
             selectedItemId = itemId;
-            foreach (var tile in itemsPanel.Children.OfType<ItemTile>()) tile.IsSelected = tile.ItemId == itemId;
+            foreach (var tile in itemsPanel.Children.OfType<ItemBase>()) tile.IsSelected = tile.ItemId == itemId;
+            foreach (var row in detailsPanel.Children.OfType<ItemBase>()) row.IsSelected = row.ItemId == itemId;
         }
 
         // ================= roll-up / hover =================
@@ -447,7 +789,19 @@ namespace DeskFence
         {
             hovered = on;
             optionsButton.Opacity = on ? 0.85 : 0;
+            searchButton.Opacity = on && !Details ? 0.7 : 0;
             resizeGrip.Opacity = on ? 1 : 0;
+            if (on && IsPrivate)
+            {
+                revealTimer.Stop();
+                revealTimer.Start(); // a quick pass across the fence reveals nothing
+            }
+            else if (!on)
+            {
+                revealTimer.Stop();
+                revealed = false;
+                ApplyMask();
+            }
             if (!Data.AutoRollup) return;
             if (on)
             {
@@ -467,6 +821,7 @@ namespace DeskFence
             titleEdit.Text = Data.Name;
             titleEdit.Visibility = Visibility.Visible;
             title.Visibility = Visibility.Collapsed;
+            detailsHeader.Visibility = Visibility.Collapsed; // Details view: the name box takes the title bar while typing
             AllowFocus(true); // typing needs the keyboard
             titleEdit.Focus();
             Keyboard.Focus(titleEdit);
@@ -512,9 +867,11 @@ namespace DeskFence
             {
                 MenuEntry.Sub(Glyphs.View, "View", new List<MenuEntry>
                 {
-                    MenuEntry.Toggle("Large icons", px >= 44, () => SetIconSize(48)),
-                    MenuEntry.Toggle("Medium icons", px >= 30 && px < 44, () => SetIconSize(34)),
-                    MenuEntry.Toggle("Small icons", px < 30, () => SetIconSize(24)),
+                    MenuEntry.Toggle("Large icons", !Details && px >= 44, () => SetIconSize(48)),
+                    MenuEntry.Toggle("Medium icons", !Details && px >= 30 && px < 44, () => SetIconSize(34)),
+                    MenuEntry.Toggle("Small icons", !Details && px < 30, () => SetIconSize(24)),
+                    MenuEntry.Separator(),
+                    MenuEntry.Toggle("Details (list with date, type, size)", Details, () => SetView("details")),
                 }),
                 MenuEntry.Sub(Glyphs.Sort, "Sort by", new List<MenuEntry>
                 {
@@ -524,6 +881,18 @@ namespace DeskFence
                     MenuEntry.Toggle("Size", sortBy == "size", () => app.SortFence(this, "size"), !locked),
                 }),
                 MenuEntry.Item(Glyphs.Refresh, "Refresh", () => app.RefreshFence(this)),
+                MenuEntry.Item(Glyphs.Search, "Search", () => { if (Details) OpenSearch(detailsSearch); else OpenSearch(searchBox); }),
+                MenuEntry.Separator(),
+                MenuEntry.Item(Glyphs.Customize, "Customize…", () => app.OpenCustomize(this)),
+                MenuEntry.Toggle("Privacy (hide contents until hovered)", Data.Raw["privacy"] is JsonValue pv && pv.TryGetValue(out bool pb) && pb, () =>
+                {
+                    bool on = !(Data.Raw["privacy"] is JsonValue v && v.TryGetValue(out bool b) && b);
+                    Data.Raw["privacy"] = on;
+                    Data.Touch();
+                    app.SaveSoon();
+                    Refresh();
+                }),
+                MenuEntry.Item(Glyphs.Rules, (Data.Raw["rules"] as JsonArray)?.Count > 0 ? $"Rules ({((JsonArray)Data.Raw["rules"]).Count})…" : "Rules…", () => app.OpenRules(this)),
                 MenuEntry.Separator(),
                 MenuEntry.Item(Glyphs.Rename, "Rename", StartRename, !locked && !Data.HasTabs),
             };
@@ -555,8 +924,17 @@ namespace DeskFence
             FluentMenu.ShowAtCursor(entries);
         }
 
+        void SetView(string view)
+        {
+            Data.Raw["view"] = view;
+            Data.Touch();
+            app.SaveSoon();
+            Refresh();
+        }
+
         void SetIconSize(int px)
         {
+            Data.Raw["view"] = "icons";
             Data.Style["iconPx"] = px;
             Data.Touch();
             app.SaveSoon();
@@ -574,6 +952,7 @@ namespace DeskFence
             {
                 e.Effects = (e.KeyStates & DragDropKeyStates.ControlKey) != 0 ? DragDropEffects.Copy : DragDropEffects.Move;
                 dropHint.Visibility = Visibility.Visible;
+                ApplyMask();
                 if (Data.AutoRollup && !hovered) SetHovered(true); // drop down so the file can go in
             }
             e.Handled = true;
@@ -582,6 +961,7 @@ namespace DeskFence
         void OnDrop(object sender, DragEventArgs e)
         {
             dropHint.Visibility = Visibility.Collapsed;
+            ApplyMask();
             if (Data.IsLocked)
             {
                 app.Notice("This fence is locked. Unlock it to add items.");
@@ -599,6 +979,7 @@ namespace DeskFence
         protected override void OnClosed(EventArgs e)
         {
             rollupTimer.Stop();
+            revealTimer.Stop();
             base.OnClosed(e);
         }
     }

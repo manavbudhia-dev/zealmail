@@ -12,7 +12,7 @@ using Microsoft.Win32;
 namespace DeskFence
 {
     /// <summary>The whole app: fences, their windows and folders, Desktop gestures, Peek, Quick-hide.</summary>
-    internal sealed class DeskFenceApp
+    internal sealed partial class DeskFenceApp
     {
         readonly Dispatcher ui = Dispatcher.CurrentDispatcher;
         readonly List<FenceData> fences;
@@ -49,6 +49,7 @@ namespace DeskFence
             FirstRunRepair();
             foreach (var fence in fences) OpenWindow(fence);
             foreach (var fence in fences) Reconcile(fence);
+            RulesChanged(); // watch the folders the automation rules name
 
             hooks = new DesktopHooks(ui);
             hooks.QuickHideRequested += _ => ToggleQuickHide();
@@ -294,6 +295,7 @@ namespace DeskFence
 
         public void MoveItemToDesktop(FenceWindow window, JsonObject item)
         {
+            NoteLeaving(Theme.Str(item["path"]));
             var result = FileOps.MoveInto(new[] { Theme.Str(item["path"]) }, DesktopPath());
             if (result.Failed.Count > 0)
             {
@@ -510,6 +512,7 @@ namespace DeskFence
                     string path = Theme.Str(item["path"]);
                     if (OwnsFile(fence, path) && !onDisk.Contains(path))
                     {
+                        NoteLeaving(path); // it went somewhere (the Desktop?): rules must not pull it straight back
                         fence.RemoveItem(Theme.Str(item["id"]));
                         changed = true;
                     }

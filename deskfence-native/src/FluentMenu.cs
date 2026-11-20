@@ -41,7 +41,8 @@ namespace DeskFence
             Auto = "", Lock = "", Unlock = "", Add = "", Close = "", Folder = "",
             Link = "", Unlink = "", Delete = "", Open = "", Copy = "", Desktop = "",
             Remove = "", Peek = "", Hide = "", Settings = "", Power = "", Check = "",
-            Chevron = "", NewFence = "", Data = "";
+            Chevron = "", NewFence = "", Data = "", Search = "\uE721", Customize = "\uE790",
+            Rules = "\uE945", Privacy = "\uE727", Organize = "\uE8FD";
     }
 
     /// <summary>
