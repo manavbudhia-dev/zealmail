@@ -35,6 +35,7 @@ namespace DeskFence
                 MenuEntry.Toggle("Quick-hide: double-click the Desktop", app.QuickHideOn, () => Set("quickHide", !app.QuickHideOn)),
                 MenuEntry.Toggle("Quick-hide hides Desktop icons too", app.QuickHideIconsOn, () => Set("quickHideIcons", !app.QuickHideIconsOn)),
                 MenuEntry.Toggle("Peek with Win + Space", app.WinSpaceOn, () => Set("winSpacePeek", !app.WinSpaceOn)),
+                MenuEntry.Toggle("Drop a folder on the Desktop to make a fence", app.DropFolderOn, () => Set("dropFolderToFence", !app.DropFolderOn)),
                 MenuEntry.Separator(),
                 MenuEntry.Toggle("Start with Windows", app.AutoStartOn, () => Safe(() => app.SetAutoStart(!app.AutoStartOn))),
             };
@@ -52,6 +53,13 @@ namespace DeskFence
                 MenuEntry.Separator(),
                 MenuEntry.Item(Glyphs.Organize, "Organize my Desktop…", app.OrganizeDesktop),
                 MenuEntry.Item(Glyphs.Rules, "Automation rules…", app.OpenAutomation),
+                MenuEntry.Item(Glyphs.Cleanup, "Scheduled cleanup…", app.OpenCleanup),
+                MenuEntry.Item(Glyphs.Layout, "Focus layout (10 fences)…", app.ApplyFocusLayout),
+                MenuEntry.Sub(Glyphs.Backup, "Backup", new List<MenuEntry>
+                {
+                    MenuEntry.Item(Glyphs.Save, "Save a backup…", app.ExportBackup),
+                    MenuEntry.Item(Glyphs.Open, "Restore from a backup…", app.ImportBackup),
+                }),
                 MenuEntry.Separator(),
                 MenuEntry.Sub(Glyphs.Settings, "Settings", settings),
                 MenuEntry.Item(Glyphs.Data, "Open data folder", () => app.Open(Storage.Dir)),

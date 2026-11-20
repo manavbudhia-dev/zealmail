@@ -41,7 +41,9 @@ namespace DeskFence
             Background = Brushes.Transparent;
             CornerRadius = new CornerRadius(4);
             ToolTip = ItemPath;
-            RenderOptions.SetBitmapScalingMode(IconImage, BitmapScalingMode.HighQuality);
+            RenderOptions.SetBitmapScalingMode(IconImage, BitmapScalingMode.Fant); // best quality when shrinking
+            IconImage.SnapsToDevicePixels = true;
+            IconImage.UseLayoutRounding = true;
             Fallback.Text = Theme.Str(item["type"]) == "folder" ? "📁" : "📄";
             Fallback.HorizontalAlignment = HorizontalAlignment.Center;
             Fallback.VerticalAlignment = VerticalAlignment.Center;
@@ -85,7 +87,12 @@ namespace DeskFence
                 var stored = ShellIcons.FromDataUrl(icon);
                 if (stored != null) { SetIcon(stored); return; }
             }
-            int size = px <= 16 ? 16 : px <= 32 ? 32 : px <= 48 ? 48 : px <= 64 ? 64 : px <= 96 ? 96 : 128;
+            // ask Windows for the icon at the REAL pixel size on this monitor (125% / 150% scaling makes a
+            // 34-px icon 43-51 real pixels): a smaller picture stretched up looks soft
+            double scale = 1;
+            try { scale = Math.Max(1, Screens.ByDevice(Fence.Data.ScreenDevice)?.Scale ?? 1); } catch { /* 100% */ }
+            double real = px * scale;
+            int size = real <= 16 ? 16 : real <= 24 ? 24 : real <= 32 ? 32 : real <= 48 ? 48 : real <= 64 ? 64 : real <= 96 ? 96 : real <= 128 ? 128 : 256;
             ShellIcons.Request(ItemPath, size, SetIcon);
         }
 

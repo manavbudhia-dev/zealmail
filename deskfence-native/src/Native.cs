@@ -92,6 +92,12 @@ namespace DeskFence
             return ClassOf(root == IntPtr.Zero ? h : root);
         }
 
+        public static bool IsExplorerAt(POINT p)
+        {
+            string c = RootClassAt(p);
+            return c == "CabinetWClass" || c == "ExploreWClass";
+        }
+
         public static bool IsDesktopAt(POINT p)
         {
             string c = RootClassAt(p);

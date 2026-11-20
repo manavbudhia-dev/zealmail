@@ -42,7 +42,7 @@ namespace DeskFence
             Link = "", Unlink = "", Delete = "", Open = "", Copy = "", Desktop = "",
             Remove = "", Peek = "", Hide = "", Settings = "", Power = "", Check = "",
             Chevron = "", NewFence = "", Data = "", Search = "\uE721", Customize = "\uE790",
-            Rules = "\uE945", Privacy = "\uE727", Organize = "\uE8FD", Clock = "\uE823";
+            Rules = "\uE945", Privacy = "\uE727", Organize = "\uE8FD", Clock = "\uE823", Cleanup = "\uE8F1", Layout = "\uF0E2", Backup = "\uE777", Save = "\uE74E";
     }
 
     /// <summary>

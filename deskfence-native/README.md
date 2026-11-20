@@ -28,7 +28,13 @@ Not code-signed: if SmartScreen warns, click **More info → Run anyway**.
   browse into sub-folders
 - Quick-hide: double-click empty Desktop space (fences and, optionally, Desktop icons)
 - Peek: Win + Space shows the fences above your windows; Esc / Win + Space / a click goes back
-- Tray menu: new fence, hide/show, Peek, privacy, organize, rules, settings, start with Windows
+- Widgets: a big clock (12/24 h, seconds, date, size) and a to-do list on the Desktop (tray > Widgets)
+- Scheduled cleanup: archive or Recycle-Bin old items in Desktop / Downloads on a schedule, with presets,
+  preview and Run now; system folders are never touched
+- Backup: save / restore fences, rules, settings, widgets and to-dos as one file (tray > Backup)
+- Focus layout: ten ready-made fences filled with your own apps (tray)
+- Drag a folder from File Explorer onto empty Desktop space: a fence showing that folder (Shift = normal drop)
+- Tray menu: new fence, hide/show, Peek, privacy, widgets, organize, rules, cleanup, layout, backup, settings
 
 ## Build (Windows or Linux, .NET 8 SDK)
 

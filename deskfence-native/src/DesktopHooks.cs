@@ -34,12 +34,17 @@ namespace DeskFence
         public event Action DrawCancelled;
         public event Action PeekToggled;
         public event Action EscapePressed;
+        /// <summary>A drag that started in a File Explorer window is under way / has ended.</summary>
+        public event Action ExplorerDragStarted;
+        public event Action ExplorerDragEnded;
+        public volatile bool DropFolderEnabled = true;
 
         readonly Dispatcher ui;
         readonly BlockingCollection<(int Msg, Native.POINT Pt, uint Time)> events = new BlockingCollection<(int, Native.POINT, uint)>(4096);
         HookProc mouseProc, keyProc; // kept in fields: the GC must never collect a live hook callback
         IntPtr mouseHook, keyHook;
         volatile bool rightDown;
+        volatile bool leftDown;
         bool swallowingSpace;
 
         public DesktopHooks(Dispatcher ui) => this.ui = ui;
@@ -81,13 +86,15 @@ namespace DeskFence
             if (code >= 0)
             {
                 int msg = wParam.ToInt32();
-                if (msg == 0x0201 || msg == 0x0202 || msg == 0x0204 || msg == 0x0205 || (msg == 0x0200 && rightDown))
+                if (msg == 0x0201 || msg == 0x0202 || msg == 0x0204 || msg == 0x0205 || (msg == 0x0200 && (rightDown || (leftDown && DropFolderEnabled))))
                 {
                     var data = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
                     if ((data.flags & 1) == 0) // LLMHF_INJECTED: ignore synthetic input
                     {
                         if (msg == 0x0204) rightDown = true;
                         else if (msg == 0x0205) rightDown = false;
+                        else if (msg == 0x0201) leftDown = true;
+                        else if (msg == 0x0202) leftDown = false;
                         events.TryAdd((msg, data.pt, data.time)); // never blocks: a full queue drops the event
                     }
                 }
@@ -143,6 +150,7 @@ namespace DeskFence
             uint lastClickTime = 0;
             bool haveLastClick = false;
             bool rCandidate = false, rMoved = false, rArmed = false;
+            bool lFromExplorer = false, lDragging = false;
 
             foreach (var e in events.GetConsumingEnumerable())
             {
@@ -153,9 +161,18 @@ namespace DeskFence
                         case 0x0201: // left down
                             lDown = e.Pt;
                             lOverDesktop = Native.IsDesktopAt(e.Pt);
+                            lDragging = false;
+                            // Shift = the user's way to drop onto the Desktop normally
+                            lFromExplorer = DropFolderEnabled && FencesVisible && !lOverDesktop && (Native.GetAsyncKeyState(0x10) & 0x8000) == 0 && Native.IsExplorerAt(e.Pt);
                             break;
 
                         case 0x0202: // left up: a click on the Desktop? two in a row = double-click
+                            if (lDragging)
+                            {
+                                lDragging = false;
+                                ui.BeginInvoke(() => ExplorerDragEnded?.Invoke());
+                            }
+                            lFromExplorer = false;
                             if (lOverDesktop && Near(e.Pt, lDown, 4))
                             {
                                 if (haveLastClick && e.Time - lastClickTime <= dblTime && Near(e.Pt, lastClickPt, 6))
@@ -189,7 +206,12 @@ namespace DeskFence
                             p0 = e.Pt;
                             break;
 
-                        case 0x0200: // move (only queued while the right button is down)
+                        case 0x0200: // move (queued while a button is down)
+                            if (lFromExplorer && !lDragging && !Near(e.Pt, lDown, 8))
+                            {
+                                lDragging = true; // something is being dragged out of an Explorer window
+                                ui.BeginInvoke(() => ExplorerDragStarted?.Invoke());
+                            }
                             if (rCandidate && !rMoved && !Near(e.Pt, p0, 12))
                             {
                                 rMoved = true;

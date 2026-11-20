@@ -51,6 +51,7 @@ namespace DeskFence
             foreach (var fence in fences) Reconcile(fence);
             RulesChanged(); // watch the folders the automation rules name
             OpenWidgets(); // clock / to-do, if switched on
+            StartScheduler(); // scheduled cleanups
 
             hooks = new DesktopHooks(ui);
             hooks.QuickHideRequested += _ => ToggleQuickHide();
@@ -63,6 +64,8 @@ namespace DeskFence
             hooks.DrawStarted += OnDrawStarted;
             hooks.DrawEnded += OnDrawEnded;
             hooks.DrawCancelled += EndRubberBand;
+            hooks.ExplorerDragStarted += OnExplorerDragStarted;
+            hooks.ExplorerDragEnded += OnExplorerDragEnded;
             ApplySettings();
             hooks.Start();
 
@@ -155,6 +158,7 @@ namespace DeskFence
             hooks.PeekKeyEnabled = WinSpaceOn;
             hooks.DrawEnabled = DrawOn;
             hooks.FencesVisible = !QuickHidden;
+            hooks.DropFolderEnabled = DropFolderOn;
         }
 
         // ================= windows =================
