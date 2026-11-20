@@ -286,6 +286,8 @@ namespace DeskFence
             }
             Reconcile(fence);
             SaveSoon();
+            // the items were added above, so Reconcile found "nothing new" and did not redraw: do it here
+            window.Refresh();
             if (result.Failed.Count > 0)
                 MessageBox.Show("Some items could not be moved:\n\n" + Describe(result.Failed), "DeskFence", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
@@ -379,6 +381,7 @@ namespace DeskFence
             Watch(fence);
             Reconcile(fence);
             SaveSoon();
+            window.Refresh();
         }
 
         public void UnlinkFolder(FenceWindow window)
