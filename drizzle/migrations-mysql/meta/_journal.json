@@ -85,6 +85,27 @@
       "when": 1793280382891,
       "tag": "0011_message_invite_response",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1793280383891,
+      "tag": "0012_message_link_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1793280384891,
+      "tag": "0013_message_tracking_recipients",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1793280385891,
+      "tag": "0014_user_tracking_preferences",
+      "breakpoints": true
     }
   ]
 }

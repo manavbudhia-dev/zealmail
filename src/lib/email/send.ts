@@ -6,15 +6,18 @@ import { buildSnippet } from "@/lib/email/parse";
 import { dispatchWebhooks } from "@/lib/email/webhooks";
 import { upsertContactsFromAddresses } from "@/lib/contacts/service";
 import { getAuthorizedSenderAddress } from "@/lib/email/sender";
-import { getEmailAddressList, joinEmailAddressList, splitEmailAddressList } from "@/lib/email/address";
+import { getEmailAddress, getEmailAddressList, joinEmailAddressList, splitEmailAddressList } from "@/lib/email/address";
 import { formatMessageIdHeader, normalizeMessageId, parseMessageIdList } from "@/lib/email/threading";
 import { createAuditLog } from "@/lib/mailboxes/audit";
 import { loadMessageAttachmentContents, storeMessageAttachments, validateAttachments } from "@/lib/email/attachments";
 import type { AttachmentContent } from "@/lib/email/attachment-types";
 import { getOutboundAttachmentMaxMb } from "@/lib/email/attachment-policy";
 import { getOutboundProviderConfig, sendThroughProvider } from "@/lib/email/outbound-provider";
-import { prepareCloudflareAttachments } from "@/lib/email/cloud-attachment-utils";
-import { ensureTrackingToken, getTrackingHostForSender } from "@/lib/tracking/open-tracking";
+import { appendSharedFileLinks, prepareCloudflareAttachments } from "@/lib/email/cloud-attachment-utils";
+import { getOrCreateSharedAttachmentUrl } from "@/lib/email/shared-attachments";
+import { ensureTrackingToken, getSentCopies, getTrackingHostForSender, markCopySent } from "@/lib/tracking/open-tracking";
+import { ensureTrackedLinks } from "@/lib/tracking/link-tracking";
+import { buildTrackedLinkUrl, extractTrackableLinks, rewriteTrackedLinks } from "@/lib/tracking/link-tracking-utils";
 import { setFollowUp } from "@/lib/follow-ups/service";
 import { buildTrackingPixelUrl, injectTrackingPixel, resolveTrackingOrigin } from "@/lib/tracking/open-tracking-utils";
 import { getComposePreferences } from "@/lib/compose/preferences";
@@ -45,6 +48,13 @@ export type SendEmailInput = {
 	undoSend?: boolean;
 	/** Add a read-receipt pixel to the HTML part (the stored Sent copy stays without it). */
 	trackOpens?: boolean;
+	/**
+	 * With `trackOpens`, deliver one copy per recipient (each addressed only to them) so opens and
+	 * clicks are counted per person. The stored Sent copy keeps the full recipient lists.
+	 */
+	separateCopies?: boolean;
+	/** Stored attachments to send as click-tracked download links; filled in by `sendEmail` from `tracked`. */
+	trackedAttachmentIds?: string[];
 	/** Bring the thread back to the inbox after this many days unless a reply arrives. */
 	followUpDays?: number;
 	publicOrigin?: string;
@@ -52,6 +62,8 @@ export type SendEmailInput = {
 
 /** How long a send started from the composer waits before it is delivered. */
 const MAX_RECIPIENTS = 50;
+/** `message_tracking.recipient` is a 191-character key on MySQL; longer addresses get one shared copy. */
+const MAX_COPY_RECIPIENT_LENGTH = 191;
 const MAX_QUEUE_DELAY_SECONDS = 24 * 60 * 60;
 
 type PreparedDelivery = {
@@ -159,6 +171,12 @@ export async function sendEmail(
 		throw error;
 	}
 
+	// Kept by storage id so a queued (undo or scheduled) delivery, which reloads the files, still knows.
+	if (input.trackOpens) {
+		const trackedIds = attachments.filter((attachment) => attachment.tracked && attachment.storageId).map((attachment) => attachment.storageId!);
+		if (trackedIds.length) input = { ...input, trackedAttachmentIds: trackedIds };
+	}
+
 	const jobId = newId("job");
 	try {
 		await db.insert(outboundJobs).values({
@@ -234,43 +252,47 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 	let acceptedMessageId: string | null = null;
 	try {
 		const provider = await getOutboundProviderConfig(env, from);
+		const shared = await shareTrackedAttachments(env, attachments, input);
 		// Cloudflare's 5 MiB cap forces big files into download links; Resend takes
 		// the attachments directly (the admin's outgoing limit still applies).
 		const prepared = provider.provider === "cloudflare"
-			? await prepareCloudflareAttachments(env, attachments, {
+			? await prepareCloudflareAttachments(env, shared.attachments, {
 				subject: input.subject,
-				html: input.html,
-				text: input.text,
+				html: shared.html,
+				text: shared.text,
 				headers,
 				publicOrigin: input.publicOrigin,
 			})
-			: { attachments, html: input.html, text: input.text };
+			: shared;
 		if (prepared.text !== input.text || prepared.html !== input.html) {
 			await db.update(messages).set({ textBody: prepared.text ?? null, htmlBody: prepared.html ?? null }).where(eq(messages.id, messageId));
 		}
-		const html = input.trackOpens && prepared.html ? await withTrackingPixel(env, messageId, from, prepared.html, input.publicOrigin) : prepared.html;
-		const response = await sendThroughProvider(
-			env,
-			provider,
-			{
-				from,
-				to,
-				cc,
-				bcc,
-				subject: input.subject,
-				headers,
-				html,
-				text: prepared.text,
-				attachments: prepared.attachments.map((attachment) => ({
-					filename: attachment.filename,
-					type: attachment.type,
-					content: attachment.content,
-					disposition: attachment.disposition === "inline" && attachment.contentId ? "inline" : "attachment",
-					contentId: attachment.contentId,
-				})),
-			},
-			jobId,
-		);
+		const message = {
+			from,
+			subject: input.subject,
+			headers,
+			text: prepared.text,
+			attachments: prepared.attachments.map((attachment) => ({
+				filename: attachment.filename,
+				type: attachment.type,
+				content: attachment.content,
+				disposition: attachment.disposition === "inline" && attachment.contentId ? "inline" as const : "attachment" as const,
+				contentId: attachment.contentId,
+			})),
+		};
+		const copies = input.trackOpens && input.separateCopies && prepared.html
+			? await prepareSeparateCopies(env, messageId, from, [...to, ...cc, ...bcc], input.publicOrigin)
+			: null;
+		let response: { messageId: string };
+		let undelivered: string[] = [];
+		if (copies) {
+			const result = await sendSeparateCopies(env, provider, { messageId, jobId }, message, prepared.html!, copies, (id) => { acceptedMessageId ??= id; });
+			response = { messageId: result.messageId };
+			undelivered = result.undelivered;
+		} else {
+			const html = input.trackOpens && prepared.html ? await withTrackingPixel(env, messageId, from, prepared.html, input.publicOrigin) : prepared.html;
+			response = await sendThroughProvider(env, provider, { ...message, to, cc, bcc, html }, jobId);
+		}
 		acceptedMessageId = response.messageId;
 
 		// A fresh message starts its own conversation; Cloudflare's Message-ID is what
@@ -292,7 +314,13 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 				.set({ threadKey: threadId })
 				.where(and(eq(conversationNotes.mailboxId, mailboxId), eq(conversationNotes.threadKey, messageId)));
 		}
-		await db.update(outboundJobs).set({ status: "sent", updatedAt: new Date() }).where(eq(outboundJobs.id, jobId));
+		await db
+			.update(outboundJobs)
+			.set({ status: "sent", updatedAt: new Date(), ...(undelivered.length ? { error: `Not delivered to: ${undelivered.join(", ")}` } : {}) })
+			.where(eq(outboundJobs.id, jobId));
+		if (undelivered.length) {
+			await dispatchWebhooks(env, input.userId, "message.failed", { messageId, error: `Not delivered to: ${undelivered.join(", ")}` });
+		}
 		if (input.followUpDays) {
 			// The message is already out; a reminder that cannot be stored must not fail the send.
 			await setFollowUp(env, { messageId, userId: input.userId, days: input.followUpDays }).catch((error) => console.error("Follow-up reminder skipped", error));
@@ -332,8 +360,9 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 }
 
 /**
- * The sender domain's own pixel host wins over APP_URL so the pixel matches the From domain.
- * A missing origin or an unapplied migration sends the message untracked rather than failing it.
+ * The sender domain's own pixel host wins over APP_URL so the pixel and click links match the From domain.
+ * A missing origin or an unapplied migration sends the message untracked rather than failing it;
+ * links stay untouched when only the click-tracking migration is missing.
  */
 async function withTrackingPixel(env: CloudflareEnv, messageId: string, from: string, html: string, publicOrigin: string | undefined): Promise<string> {
 	try {
@@ -341,9 +370,110 @@ async function withTrackingPixel(env: CloudflareEnv, messageId: string, from: st
 		const origin = host ? `https://${host}` : resolveTrackingOrigin(env.APP_URL, publicOrigin);
 		if (!origin) return html;
 		const token = await ensureTrackingToken(env, messageId);
-		return injectTrackingPixel(html, buildTrackingPixelUrl(origin, token));
+		return injectTrackingPixel(await withTrackedLinks(env, token, origin, html), buildTrackingPixelUrl(origin, token));
 	} catch (error) {
 		console.error("Read receipt skipped", error);
+		return html;
+	}
+}
+
+/**
+ * Moves attachments marked as tracked out of the message and into download links appended to it.
+ * Those links are then click-tracked like any other, which is how a file open is recorded.
+ */
+async function shareTrackedAttachments(
+	env: CloudflareEnv,
+	attachments: AttachmentContent[],
+	input: SendEmailInput,
+): Promise<{ attachments: AttachmentContent[]; html?: string; text?: string }> {
+	const trackedIds = new Set(input.trackOpens && input.html ? input.trackedAttachmentIds ?? [] : []);
+	const tracked = attachments.filter((attachment) => attachment.storageId && trackedIds.has(attachment.storageId));
+	if (tracked.length === 0) return { attachments, html: input.html, text: input.text };
+	const links: { filename: string; size: number; url: string }[] = [];
+	for (const attachment of tracked) {
+		links.push({ filename: attachment.filename, size: attachment.content.byteLength, url: await getOrCreateSharedAttachmentUrl(env, attachment.storageId!, input.publicOrigin) });
+	}
+	return {
+		attachments: attachments.filter((attachment) => !tracked.includes(attachment)),
+		...appendSharedFileLinks({ html: input.html, text: input.text }, links),
+	};
+}
+
+type SeparateCopy = { entry: string; address: string; token: string; origin: string };
+
+/**
+ * One tracking token per recipient for a separate-copies send, or null to send a single copy instead:
+ * fewer than two recipients, no public origin, an address too long to index, or a database without
+ * migration 0089. Creating every token up front means a copy is never sent without its "sent" marker.
+ */
+async function prepareSeparateCopies(
+	env: CloudflareEnv,
+	messageId: string,
+	from: string,
+	recipients: string[],
+	publicOrigin: string | undefined,
+): Promise<SeparateCopy[] | null> {
+	const entries = recipients.map((entry) => ({ entry, address: getEmailAddress(entry).toLowerCase() }));
+	if (entries.length < 2 || entries.some(({ address }) => !address || address.length > MAX_COPY_RECIPIENT_LENGTH)) return null;
+	try {
+		const host = await getTrackingHostForSender(env, from);
+		const origin = host ? `https://${host}` : resolveTrackingOrigin(env.APP_URL, publicOrigin);
+		if (!origin) return null;
+		const copies: SeparateCopy[] = [];
+		for (const { entry, address } of entries) {
+			copies.push({ entry, address, token: await ensureTrackingToken(env, messageId, address), origin });
+		}
+		return copies;
+	} catch (error) {
+		console.error("Separate copies skipped; sending one copy", error);
+		return null;
+	}
+}
+
+/**
+ * Sends each recipient a copy addressed only to them, with its own pixel and click links. Copies a
+ * previous attempt already sent are skipped, so a retried job never mails anyone twice. Fails only
+ * when no copy at all went out; otherwise the recipients that could not be reached are returned.
+ */
+async function sendSeparateCopies(
+	env: CloudflareEnv,
+	provider: Awaited<ReturnType<typeof getOutboundProviderConfig>>,
+	{ messageId, jobId }: { messageId: string; jobId: string },
+	message: Omit<Parameters<typeof sendThroughProvider>[2], "to" | "cc" | "bcc" | "html">,
+	html: string,
+	copies: SeparateCopy[],
+	onAccepted: (providerMessageId: string) => void,
+): Promise<{ messageId: string; undelivered: string[] }> {
+	const sent = await getSentCopies(env, messageId);
+	let first: string | null = sent.values().next().value ?? null;
+	if (first) onAccepted(first);
+	const undelivered: string[] = [];
+	let lastError: unknown = null;
+	for (const copy of copies) {
+		if (sent.has(copy.address)) continue;
+		try {
+			const tracked = injectTrackingPixel(await withTrackedLinks(env, copy.token, copy.origin, html), buildTrackingPixelUrl(copy.origin, copy.token));
+			const response = await sendThroughProvider(env, provider, { ...message, to: [copy.entry], html: tracked }, `${jobId}:${copy.address}`);
+			first ??= response.messageId;
+			onAccepted(response.messageId);
+			await markCopySent(env, copy.token, response.messageId).catch((error) => console.error(`Recording the copy for ${copy.address} failed`, error));
+		} catch (error) {
+			console.error(`Copy for ${copy.address} was not sent`, error);
+			lastError = error;
+			undelivered.push(copy.entry);
+		}
+	}
+	if (!first) throw lastError instanceof Error ? lastError : new Error("Send failed");
+	return { messageId: first, undelivered };
+}
+
+async function withTrackedLinks(env: CloudflareEnv, token: string, origin: string, html: string): Promise<string> {
+	try {
+		const ids = await ensureTrackedLinks(env, token, extractTrackableLinks(html));
+		const tracked = new Map([...ids].map(([url, id]) => [url, buildTrackedLinkUrl(origin, id)]));
+		return rewriteTrackedLinks(html, tracked);
+	} catch (error) {
+		console.error("Click tracking skipped", error);
 		return html;
 	}
 }

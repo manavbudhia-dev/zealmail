@@ -515,19 +515,29 @@ export const outboundJobs = sqliteTable("outbound_jobs", {
 	index("outbound_jobs_message_idx").on(t.messageId),
 ]);
 
-/** One row per sent message that carries an open-tracking pixel; the token is the pixel URL's secret. */
+/**
+ * One row per tracked copy of a sent message; the token is the pixel URL's secret. A message sent as one
+ * copy has a single row with an empty `recipient`; one sent as separate copies has a row per recipient.
+ */
 export const messageTracking = sqliteTable(
 	"message_tracking",
 	{
 		token: text("token").primaryKey(),
 		messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+		/** Lower-case address of the copy's only recipient, or empty when every recipient got the same copy. */
+		recipient: text("recipient").notNull().default(""),
+		/** Message-ID the provider gave this copy; set once it is out, so a retried delivery skips it and replies to it thread. */
+		providerMessageId: text("provider_message_id"),
 		/** Opens that were not classified as automated prefetches. */
 		openCount: integer("open_count").notNull().default(0),
 		firstOpenedAt: timestamp("first_opened_at"),
 		lastOpenedAt: timestamp("last_opened_at"),
 		createdAt: timestamp("created_at").notNull().$defaultFn(() => new Date()),
 	},
-	(t) => [uniqueIndex("message_tracking_message_idx").on(t.messageId)],
+	(t) => [
+		uniqueIndex("message_tracking_message_recipient_idx").on(t.messageId, t.recipient),
+		index("message_tracking_provider_message_idx").on(t.providerMessageId),
+	],
 );
 
 /** Hostname under a domain that serves its read-receipt pixels, so the pixel matches the sender. Kept out of `domains` so sending works before the migration. */
@@ -556,6 +566,37 @@ export const messageOpens = sqliteTable(
 	(t) => [index("message_opens_token_idx").on(t.token, t.openedAt)],
 );
 
+/** One row per distinct link in a tracked message; the id is the click URL's secret, so the redirect target is never taken from the request. */
+export const messageLinks = sqliteTable(
+	"message_links",
+	{
+		id: text("id").primaryKey(),
+		token: text("token").notNull().references(() => messageTracking.token, { onDelete: "cascade" }),
+		url: text("url").notNull(),
+		/** Clicks that were not classified as automated (link scanners, prefetches). */
+		clickCount: integer("click_count").notNull().default(0),
+		firstClickedAt: timestamp("first_clicked_at"),
+		lastClickedAt: timestamp("last_clicked_at"),
+		createdAt: timestamp("created_at").notNull().$defaultFn(() => new Date()),
+	},
+	(t) => [index("message_links_token_idx").on(t.token)],
+);
+
+export const messageLinkClicks = sqliteTable(
+	"message_link_clicks",
+	{
+		id: text("id").primaryKey(),
+		linkId: text("link_id").notNull().references(() => messageLinks.id, { onDelete: "cascade" }),
+		clickedAt: timestamp("clicked_at").notNull(),
+		client: text("client"),
+		device: text("device"),
+		country: text("country"),
+		city: text("city"),
+		automated: bool("automated").notNull().default(false),
+	},
+	(t) => [index("message_link_clicks_link_idx").on(t.linkId, t.clickedAt)],
+);
+
 /**
  * Per-user composer defaults. Kept out of `users` because every session
  * lookup selects the whole users row, which would fail before the migration.
@@ -566,6 +607,22 @@ export const userComposePreferences = sqliteTable("user_compose_preferences", {
 	undoSendSeconds: integer("undo_send_seconds").notNull().default(15),
 	updatedAt: timestamp("updated_at").notNull().$defaultFn(() => new Date()),
 });
+
+/** Per-user read-receipt alerts: the "opened N times" follow-up, a linked Telegram chat and summary emails. */
+export const userTrackingPreferences = sqliteTable("user_tracking_preferences", {
+	userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+	/** Real opens after which an unanswered message is due for a follow-up; 0 turns it off. */
+	hotOpenThreshold: integer("hot_open_threshold").notNull().default(3),
+	telegramChatId: text("telegram_chat_id"),
+	/** One-time code the user sends the bot with /start; cleared once the chat is linked. */
+	telegramLinkCode: text("telegram_link_code"),
+	telegramLinkExpiresAt: timestamp("telegram_link_expires_at"),
+	telegramOpens: bool("telegram_opens").notNull().default(true),
+	telegramClicks: bool("telegram_clicks").notNull().default(true),
+	summaryFrequency: text("summary_frequency", { enum: ["off", "daily", "weekly"] }).notNull().default("off"),
+	summaryLastSentAt: timestamp("summary_last_sent_at"),
+	updatedAt: timestamp("updated_at").notNull().$defaultFn(() => new Date()),
+}, (t) => [uniqueIndex("user_tracking_preferences_link_code_idx").on(t.telegramLinkCode)]);
 
 /**
  * "Remind me if there is no reply": a sent message whose thread comes back to the

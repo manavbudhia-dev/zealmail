@@ -27,7 +27,7 @@ import { dispatchMessageCountsDelta, toggleMessageStar } from "./message-list-ro
 import { useMessageNavigation } from "./message-navigation";
 import { rememberOpenedUnreadMessage } from "./message-detail-navigation-utils";
 import { useConversationView } from "./use-conversation-view";
-import { OpenedIndicator } from "./message-open-status";
+import { MessageTicks } from "./message-open-status";
 import { MessageNotesPopover, NoteBadge } from "./message-notes-popover";
 import { MoreActionsMenu, SelectionMenu } from "./message-list-toolbar-menus";
 import { MaterialRefresh } from "@/components/material-icons";
@@ -210,7 +210,7 @@ function MessageListRowComponent({
 							<NoteBadge count={message.noteCount} className="ml-2" />
 						</span>
 						<span className={clsx(unread ?"font-medium":"text-neutral-500","shrink-0 text-[11px]")}>
-							<OpenedIndicator count={message.openCount} />
+							<MessageTicks tracking={message.tracking} replied={message.replied} />
 							{message.scheduledAt ? formatScheduledSendTime(message.scheduledAt, t) : formatMessageListTimestamp(message.createdAt, todayKey)}
 						</span>
 					</span>
@@ -312,7 +312,7 @@ function MessageListRowComponent({
 				className={`min-w-[80px] whitespace-nowrap text-right text-xs group-hover:opacity-0 ${unread ? "font-bold text-[#1f1f1f]" : "text-[#5f6368]"
 					}`}
 			>
-				<OpenedIndicator count={message.openCount} />
+				<MessageTicks tracking={message.tracking} replied={message.replied} />
 				{message.scheduledAt ? formatScheduledSendTime(message.scheduledAt, t) : formatMessageListTimestamp(message.createdAt, todayKey)}
 			</time>
 		</>

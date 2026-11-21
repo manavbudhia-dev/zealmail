@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import type { getDb } from "@/db";
-import { messages } from "@/db/schema";
+import { messages, messageTracking } from "@/db/schema";
+import { isMissingColumnError, isMissingTableError } from "@/lib/database-errors";
 import { insensitiveLike } from "@/db/sql";
 import { newId } from "@/lib/ids";
 import type { ResolveThreadInput } from "@/lib/email/threading-types";
@@ -53,12 +54,13 @@ export async function resolveThreadId(db: Db, input: ResolveThreadInput): Promis
 	if (input.mailboxId && candidates.length > 0) {
 		// Stored Message-IDs may or may not include their angle brackets.
 		const variants = candidates.flatMap((id) => [id, `<${id}>`]);
-		const [parent] = await db
+		const [stored] = await db
 			.select({ threadId: messages.threadId, providerMessageId: messages.providerMessageId })
 			.from(messages)
 			.where(and(eq(messages.mailboxId, input.mailboxId), inArray(messages.providerMessageId, variants)))
 			.orderBy(asc(messages.createdAt))
 			.limit(1);
+		const parent = stored ?? await findSeparateCopyParent(db, input.mailboxId, variants);
 		if (parent) {
 			const threadId = parent.threadId ?? normalizeMessageId(parent.providerMessageId) ?? newId("thr");
 			// In-Reply-To is attacker-controlled, so an inbound message only joins a conversation
@@ -75,6 +77,25 @@ export async function resolveThreadId(db: Db, input: ResolveThreadInput): Promis
 		if (taken) return newId("thr");
 	}
 	return own ?? newId("thr");
+}
+
+/**
+ * A message sent as separate copies is stored once under the first copy's Message-ID; the other
+ * copies' IDs are on its tracking rows. Before migration 0089 there are none to find.
+ */
+async function findSeparateCopyParent(db: Db, mailboxId: string, variants: string[]) {
+	try {
+		const [copy] = await db
+			.select({ threadId: messages.threadId, providerMessageId: messages.providerMessageId })
+			.from(messageTracking)
+			.innerJoin(messages, eq(messages.id, messageTracking.messageId))
+			.where(and(eq(messages.mailboxId, mailboxId), inArray(messageTracking.providerMessageId, variants)))
+			.limit(1);
+		return copy;
+	} catch (error) {
+		if (isMissingColumnError(error) || isMissingTableError(error)) return undefined;
+		throw error;
+	}
 }
 
 async function isThreadParticipant(db: Db, mailboxId: string, threadId: string, address: string): Promise<boolean> {

@@ -38,6 +38,8 @@ interface CloudflareEnv {
 	APNS_TEAM_ID?: string;
 	/** The .p8 file contents (PKCS#8 PEM). */
 	APNS_PRIVATE_KEY?: string;
+	/** Telegram bot token (from @BotFather) for read-receipt alerts; users link their chat in Settings → Tracking. */
+	TELEGRAM_BOT_TOKEN?: string;
 	/** Origin of a Mailflare push relay (mailflare-relay); lets this server push without APNS_* keys. */
 	APNS_RELAY_URL?: string;
 	/** Spamhaus Data Query Service key; enables ZEN (sending IP) and DBL (domain) checks in spam analysis. */

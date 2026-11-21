@@ -1,3 +1,5 @@
+import type { MessageTrackingState } from "@/lib/tracking/types";
+
 export type MessageStatus = "received" | "sent" | "draft" | "queued" | "failed" | "archived" | "trash" | "spam";
 
 export type MessageFolder = "inbox" | "starred" | "snoozed" | "sent" | "scheduled" | "drafts" | "archived" | "trash" | "spam";
@@ -36,6 +38,10 @@ export type Message = {
 	scheduledAt?: string | null;
 	/** Opens counted by the read-receipt pixel; absent when the message was sent without one. */
 	openCount?: number;
+	/** Tick state from the read-receipt pixel and click links; absent when the message was sent untracked. */
+	tracking?: MessageTrackingState;
+	/** A sent message that a later inbound message in its conversation answered. */
+	replied?: boolean;
 	/** Notes on the conversation, with the text of the latest ones; absent when it has none. */
 	noteCount?: number;
 	notePreview?: string;

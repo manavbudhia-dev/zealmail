@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 		const status = error instanceof RequestBodyTooLargeError ? 413 : 400;
 		return NextResponse.json({ error: "Invalid send request" }, { status });
 	}
-	const { attachments = [], draftId, ...fields } = input;
+	const { attachments = [], draftId, trackedDraftAttachments = [], ...fields } = input;
 	const parsed = sendEmailSchema.omit({ attachments: true }).safeParse(fields);
 	if (!parsed.success) {
 		return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -42,7 +42,8 @@ export async function POST(request: Request) {
 		}
 		const [agent] = await db.select({ draftId: agentDraftMetadata.draftId }).from(agentDraftMetadata).where(eq(agentDraftMetadata.draftId, draftId)).limit(1);
 		if (agent) return NextResponse.json({ error: "Review and confirm this AI draft before sending" }, { status: 409 });
-		attachments.push(...(await loadMessageAttachmentContents(env, draftId)));
+		const tracked = new Set(trackedDraftAttachments);
+		attachments.push(...(await loadMessageAttachmentContents(env, draftId)).map((attachment) => attachment.storageId && tracked.has(attachment.storageId) ? { ...attachment, tracked: true } : attachment));
 	}
 
 	try {

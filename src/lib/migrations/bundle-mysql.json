@@ -336,6 +336,34 @@
       "statements": [
         "ALTER TABLE `messages` ADD `invite_response` text;"
       ]
+    },
+    {
+      "name": "0012_message_link_tracking.sql",
+      "statements": [
+        "CREATE TABLE `message_links` (\n\t`id` varchar(191) NOT NULL,\n\t`token` varchar(191) NOT NULL,\n\t`url` longtext NOT NULL,\n\t`click_count` bigint NOT NULL DEFAULT 0,\n\t`first_clicked_at` bigint,\n\t`last_clicked_at` bigint,\n\t`created_at` bigint NOT NULL,\n\tCONSTRAINT `message_links_id` PRIMARY KEY(`id`)\n);",
+        "CREATE TABLE `message_link_clicks` (\n\t`id` varchar(191) NOT NULL,\n\t`link_id` varchar(191) NOT NULL,\n\t`clicked_at` bigint NOT NULL,\n\t`client` longtext,\n\t`device` longtext,\n\t`country` longtext,\n\t`city` longtext,\n\t`automated` boolean NOT NULL DEFAULT false,\n\tCONSTRAINT `message_link_clicks_id` PRIMARY KEY(`id`)\n);",
+        "ALTER TABLE `message_links` ADD CONSTRAINT `message_links_token_message_tracking_token_fk` FOREIGN KEY (`token`) REFERENCES `message_tracking`(`token`) ON DELETE cascade ON UPDATE no action;",
+        "ALTER TABLE `message_link_clicks` ADD CONSTRAINT `message_link_clicks_link_id_message_links_id_fk` FOREIGN KEY (`link_id`) REFERENCES `message_links`(`id`) ON DELETE cascade ON UPDATE no action;",
+        "CREATE INDEX `message_links_token_idx` ON `message_links` (`token`);",
+        "CREATE INDEX `message_link_clicks_link_idx` ON `message_link_clicks` (`link_id`,`clicked_at`);"
+      ]
+    },
+    {
+      "name": "0013_message_tracking_recipients.sql",
+      "statements": [
+        "ALTER TABLE `message_tracking` ADD `recipient` varchar(191) NOT NULL DEFAULT '';",
+        "ALTER TABLE `message_tracking` ADD `provider_message_id` varchar(512);",
+        "ALTER TABLE `message_tracking` ADD CONSTRAINT `message_tracking_message_recipient_idx` UNIQUE(`message_id`,`recipient`);",
+        "ALTER TABLE `message_tracking` DROP INDEX `message_tracking_message_idx`;",
+        "CREATE INDEX `message_tracking_provider_message_idx` ON `message_tracking` (`provider_message_id`);"
+      ]
+    },
+    {
+      "name": "0014_user_tracking_preferences.sql",
+      "statements": [
+        "CREATE TABLE `user_tracking_preferences` (\n\t`user_id` varchar(191) NOT NULL,\n\t`hot_open_threshold` bigint NOT NULL DEFAULT 3,\n\t`telegram_chat_id` longtext,\n\t`telegram_link_code` varchar(191),\n\t`telegram_link_expires_at` bigint,\n\t`telegram_opens` boolean NOT NULL DEFAULT true,\n\t`telegram_clicks` boolean NOT NULL DEFAULT true,\n\t`summary_frequency` varchar(64) NOT NULL DEFAULT 'off',\n\t`summary_last_sent_at` bigint,\n\t`updated_at` bigint NOT NULL,\n\tCONSTRAINT `user_tracking_preferences_user_id` PRIMARY KEY(`user_id`),\n\tCONSTRAINT `user_tracking_preferences_link_code_idx` UNIQUE(`telegram_link_code`)\n);",
+        "ALTER TABLE `user_tracking_preferences` ADD CONSTRAINT `user_tracking_preferences_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;"
+      ]
     }
   ]
 }

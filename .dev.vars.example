@@ -36,3 +36,7 @@ CF_TOKEN=your_api_token_with_zone_email_permissions
 # S3_REGION=us-east-1
 # S3_ACCESS_KEY_ID=AKIA...
 # S3_SECRET_ACCESS_KEY=your_secret_access_key
+
+# Optional: Telegram bot (from @BotFather) for read-receipt alerts. Users link their chat in Settings → Tracking.
+# In production: wrangler secret put TELEGRAM_BOT_TOKEN
+# TELEGRAM_BOT_TOKEN=123456:ABC...

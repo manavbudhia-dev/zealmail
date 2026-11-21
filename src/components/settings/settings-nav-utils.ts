@@ -13,6 +13,10 @@ export const settingsNavSections: SettingsNavSection[] = [
 				labelKey: "settings.nav.inbox",
 			},
 			{
+				href: "/settings/tracking",
+				labelKey: "settings.nav.tracking",
+			},
+			{
 				href: "/settings/security",
 				labelKey: "settings.nav.security",
 			},

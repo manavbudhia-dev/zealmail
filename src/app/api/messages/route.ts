@@ -15,7 +15,7 @@ import { getRequestTimeZone } from "@/lib/time/utils";
 import { scheduledMessageCondition } from "@/lib/email/scheduled";
 import { getMessageListColumns, loadConversationPage } from "./utils";
 import type { ListMessage } from "./types";
-import { getOpenCounts } from "@/lib/tracking/open-tracking";
+import { getRepliedMessageIds, getTrackingStates } from "@/lib/tracking/open-tracking";
 import { summarizeNotesForRows } from "@/lib/notes/service";
 import { isMissingTableError } from "@/lib/database-errors";
 
@@ -164,7 +164,8 @@ export async function GET(request: Request) {
 			? inArray(messages.mailboxId, accessibleMailboxIds)
 			: eq(messages.userId, user.id);
 	// These enrichments depend only on the selected page, not on each other.
-	const [countRows, jobs, openCounts, noteSummaries, contactMaps] = await Promise.all([
+	const sentRows = rows.filter((row) => row.direction === "outbound");
+	const [countRows, jobs, trackingStates, repliedIds, noteSummaries, contactMaps] = await Promise.all([
 		threadIds.length > 0
 			? db
 				.select({
@@ -182,7 +183,8 @@ export async function GET(request: Request) {
 				.from(outboundJobs)
 				.where(and(inArray(outboundJobs.messageId, rows.map((row) => row.id)), eq(outboundJobs.status, "queued"), isNotNull(outboundJobs.scheduledAt)))
 			: [],
-		getOpenCounts(env, rows.filter((row) => row.direction === "outbound").map((row) => row.id)),
+		getTrackingStates(env, sentRows.map((row) => row.id)),
+		getRepliedMessageIds(env, sentRows),
 		// Optional: a database without the notes migration has no notes to show.
 		summarizeNotesForRows(db, rows).catch((error) => {
 			if (isMissingTableError(error)) return new Map<string, { count: number; preview: string }>();
@@ -231,7 +233,8 @@ export async function GET(request: Request) {
 			...message,
 			snippet: message.snippet,
 			...(scheduledAtByMessageId.has(message.id) ? { scheduledAt: scheduledAtByMessageId.get(message.id) } : {}),
-			...(openCounts.has(message.id) ? { openCount: openCounts.get(message.id) } : {}),
+			...(trackingStates.has(message.id) ? { openCount: trackingStates.get(message.id)!.opens, tracking: trackingStates.get(message.id) } : {}),
+			...(repliedIds.has(message.id) ? { replied: true } : {}),
 			...(noteSummaries.has(message.id) ? { noteCount: noteSummaries.get(message.id)!.count, notePreview: noteSummaries.get(message.id)!.preview } : {}),
 			fromContactName:
 				(message.direction === "outbound" ? accountName : null) ??

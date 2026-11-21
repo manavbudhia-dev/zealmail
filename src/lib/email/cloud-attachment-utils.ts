@@ -33,13 +33,25 @@ export async function prepareCloudflareAttachments(
 		if (estimatedSize > GENERAL_MESSAGE_LIMIT_BYTES - MIME_SAFETY_MARGIN_BYTES) throw new Error("Message exceeds Cloudflare's 5 MiB email size limit");
 		return { attachments: direct, html: message.html, text: message.text };
 	}
-	const intro = "Files shared through ZealMail (download links expire after 30 days):";
-	const textLinks = linked.map((file) => `${file.filename} (${(file.size / 1_000_000).toFixed(1)} MB): ${file.url}`).join("\n");
-	const htmlLinks = linked.map((file) => `<li>${escapeHtml(file.filename)} (${(file.size / 1_000_000).toFixed(1)} MB): <a href="${escapeHtml(file.url)}">Download file</a></li>`).join("");
-	const text = [message.text?.trim(), intro, textLinks].filter(Boolean).join("\n\n");
-	const html = `${message.html ?? ""}<div><p>${escapeHtml(intro)}</p><ul>${htmlLinks}</ul></div>`;
-	if (estimatedSize + encoder.encode(textLinks + htmlLinks + intro + intro).byteLength + 4096 > GENERAL_MESSAGE_LIMIT_BYTES - MIME_SAFETY_MARGIN_BYTES) {
+	const { html, text } = appendSharedFileLinks(message, linked);
+	const added = encoder.encode(html + text).byteLength - encoder.encode((message.html ?? "") + (message.text ?? "")).byteLength;
+	if (estimatedSize + added + 4096 > GENERAL_MESSAGE_LIMIT_BYTES - MIME_SAFETY_MARGIN_BYTES) {
 		throw new Error("Message exceeds Cloudflare's 5 MiB email size limit even with download links");
 	}
 	return { attachments: direct, html, text };
+}
+
+const SHARED_FILES_INTRO = "Files shared through ZealMail (download links expire after 30 days):";
+
+/** Appends a "files shared" block listing download links to both parts of a message. */
+export function appendSharedFileLinks(
+	message: { html?: string; text?: string },
+	linked: { filename: string; size: number; url: string }[],
+): { html: string; text: string } {
+	const textLinks = linked.map((file) => `${file.filename} (${(file.size / 1_000_000).toFixed(1)} MB): ${file.url}`).join("\n");
+	const htmlLinks = linked.map((file) => `<li>${escapeHtml(file.filename)} (${(file.size / 1_000_000).toFixed(1)} MB): <a href="${escapeHtml(file.url)}">Download file</a></li>`).join("");
+	return {
+		text: [message.text?.trim(), SHARED_FILES_INTRO, textLinks].filter(Boolean).join("\n\n"),
+		html: `${message.html ?? ""}<div><p>${escapeHtml(SHARED_FILES_INTRO)}</p><ul>${htmlLinks}</ul></div>`,
+	};
 }
