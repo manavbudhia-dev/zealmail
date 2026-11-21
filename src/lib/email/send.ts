@@ -13,7 +13,8 @@ import { loadMessageAttachmentContents, storeMessageAttachments, validateAttachm
 import type { AttachmentContent } from "@/lib/email/attachment-types";
 import { getOutboundAttachmentMaxMb } from "@/lib/email/attachment-policy";
 import { getOutboundProviderConfig, sendThroughProvider } from "@/lib/email/outbound-provider";
-import { prepareCloudflareAttachments } from "@/lib/email/cloud-attachment-utils";
+import { appendSharedFileLinks, prepareCloudflareAttachments } from "@/lib/email/cloud-attachment-utils";
+import { getOrCreateSharedAttachmentUrl } from "@/lib/email/shared-attachments";
 import { ensureTrackingToken, getSentCopies, getTrackingHostForSender, markCopySent } from "@/lib/tracking/open-tracking";
 import { ensureTrackedLinks } from "@/lib/tracking/link-tracking";
 import { buildTrackedLinkUrl, extractTrackableLinks, rewriteTrackedLinks } from "@/lib/tracking/link-tracking-utils";
@@ -52,6 +53,8 @@ export type SendEmailInput = {
 	 * clicks are counted per person. The stored Sent copy keeps the full recipient lists.
 	 */
 	separateCopies?: boolean;
+	/** Stored attachments to send as click-tracked download links; filled in by `sendEmail` from `tracked`. */
+	trackedAttachmentIds?: string[];
 	/** Bring the thread back to the inbox after this many days unless a reply arrives. */
 	followUpDays?: number;
 	publicOrigin?: string;
@@ -168,6 +171,12 @@ export async function sendEmail(
 		throw error;
 	}
 
+	// Kept by storage id so a queued (undo or scheduled) delivery, which reloads the files, still knows.
+	if (input.trackOpens) {
+		const trackedIds = attachments.filter((attachment) => attachment.tracked && attachment.storageId).map((attachment) => attachment.storageId!);
+		if (trackedIds.length) input = { ...input, trackedAttachmentIds: trackedIds };
+	}
+
 	const jobId = newId("job");
 	try {
 		await db.insert(outboundJobs).values({
@@ -243,17 +252,18 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 	let acceptedMessageId: string | null = null;
 	try {
 		const provider = await getOutboundProviderConfig(env, from);
+		const shared = await shareTrackedAttachments(env, attachments, input);
 		// Cloudflare's 5 MiB cap forces big files into download links; Resend takes
 		// the attachments directly (the admin's outgoing limit still applies).
 		const prepared = provider.provider === "cloudflare"
-			? await prepareCloudflareAttachments(env, attachments, {
+			? await prepareCloudflareAttachments(env, shared.attachments, {
 				subject: input.subject,
-				html: input.html,
-				text: input.text,
+				html: shared.html,
+				text: shared.text,
 				headers,
 				publicOrigin: input.publicOrigin,
 			})
-			: { attachments, html: input.html, text: input.text };
+			: shared;
 		if (prepared.text !== input.text || prepared.html !== input.html) {
 			await db.update(messages).set({ textBody: prepared.text ?? null, htmlBody: prepared.html ?? null }).where(eq(messages.id, messageId));
 		}
@@ -365,6 +375,28 @@ async function withTrackingPixel(env: CloudflareEnv, messageId: string, from: st
 		console.error("Read receipt skipped", error);
 		return html;
 	}
+}
+
+/**
+ * Moves attachments marked as tracked out of the message and into download links appended to it.
+ * Those links are then click-tracked like any other, which is how a file open is recorded.
+ */
+async function shareTrackedAttachments(
+	env: CloudflareEnv,
+	attachments: AttachmentContent[],
+	input: SendEmailInput,
+): Promise<{ attachments: AttachmentContent[]; html?: string; text?: string }> {
+	const trackedIds = new Set(input.trackOpens && input.html ? input.trackedAttachmentIds ?? [] : []);
+	const tracked = attachments.filter((attachment) => attachment.storageId && trackedIds.has(attachment.storageId));
+	if (tracked.length === 0) return { attachments, html: input.html, text: input.text };
+	const links: { filename: string; size: number; url: string }[] = [];
+	for (const attachment of tracked) {
+		links.push({ filename: attachment.filename, size: attachment.content.byteLength, url: await getOrCreateSharedAttachmentUrl(env, attachment.storageId!, input.publicOrigin) });
+	}
+	return {
+		attachments: attachments.filter((attachment) => !tracked.includes(attachment)),
+		...appendSharedFileLinks({ html: input.html, text: input.text }, links),
+	};
 }
 
 type SeparateCopy = { entry: string; address: string; token: string; origin: string };

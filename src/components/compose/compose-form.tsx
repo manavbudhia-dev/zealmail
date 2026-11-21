@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { BellRing, ChevronUp, Eye, EyeOff, FileText, Forward, Maximize2, Minimize2, Minus, Paperclip, Reply, Trash2, Users, X } from "@/components/icons";
+import { BellRing, ChevronUp, Eye, EyeOff, FileText, Forward, Link2, Maximize2, Minimize2, Minus, Paperclip, Reply, Trash2, Users, X } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
 	textToHtml,
 } from "./rich-text-utils";
 import { headerToRecipients, isValidRecipient, mergeRecipients, recipientsToHeader } from "./recipient-utils";
+import { trackedFileKey } from "./tracked-file-utils";
 import type { ComposeAttachment, ComposeStoredAttachment, ComposeThreading } from "./types";
 import type { ComposeAttachmentPolicy } from "./attachment-policy-types";
 
@@ -89,6 +90,13 @@ export function ComposeForm({
 	const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
 	const [trackOpens, setTrackOpens] = useTrackOpens();
 	const [separateCopies, setSeparateCopies] = useState(false);
+	// Attachments to send as click-tracked links, keyed by name and size so the mark survives draft autosave uploads.
+	const [trackedFiles, setTrackedFiles] = useState<Set<string>>(() => new Set());
+	const toggleTrackedFile = (key: string) => setTrackedFiles((current) => {
+		const next = new Set(current);
+		if (next.has(key)) next.delete(key); else next.add(key);
+		return next;
+	});
 	const recipientCount = to.length + cc.length + bcc.length;
 	const [followUpDays, setFollowUpDays] = useState<number | null>(null);
 	const [loadedDraftMailboxId, setLoadedDraftMailboxId] = useState<string | null>(null);
@@ -411,6 +419,8 @@ export function ComposeForm({
 					undoSend: true,
 					trackOpens,
 					separateCopies: separateCopies && recipientCount > 1,
+					trackedAttachments: trackOpens ? unsentAttachments.flatMap((attachment, index) => trackedFiles.has(trackedFileKey(attachment.file.name, attachment.file.size)) ? [index] : []) : [],
+					trackedDraftAttachments: trackOpens ? storedAttachments.filter((attachment) => trackedFiles.has(trackedFileKey(attachment.filename, attachment.size))).map((attachment) => attachment.id) : [],
 					followUpDays,
 				}),
 			});
@@ -738,6 +748,19 @@ export function ComposeForm({
 					<FileText className="h-4 w-4 shrink-0 text-neutral-500" />
 					<span className="max-w-48 truncate">{attachment.filename}</span>
 					<span className="text-xs text-neutral-500">{formatAttachmentSize(attachment.size)}</span>
+					{trackOpens && (
+						<Tooltip label={trackedFiles.has(trackedFileKey(attachment.filename, attachment.size)) ? t("compose.trackedFileOn") : t("compose.trackedFileOff")}>
+							<button
+								type="button"
+								aria-label={t("compose.trackedFile")}
+								aria-pressed={trackedFiles.has(trackedFileKey(attachment.filename, attachment.size))}
+								onClick={() => toggleTrackedFile(trackedFileKey(attachment.filename, attachment.size))}
+								className={cn("rounded-full p-1 hover:bg-neutral-200", trackedFiles.has(trackedFileKey(attachment.filename, attachment.size)) ? "text-blue-600" : "text-neutral-500")}
+							>
+								<Link2 className="h-3.5 w-3.5" />
+							</button>
+						</Tooltip>
+					)}
 					<button
 						type="button"
 						onClick={() => void removeStoredAttachment(attachment.id)}
@@ -758,6 +781,19 @@ export function ComposeForm({
 					<span className="text-xs text-neutral-500">
 						{formatAttachmentSize(attachment.file.size)}
 					</span>
+					{trackOpens && (
+						<Tooltip label={trackedFiles.has(trackedFileKey(attachment.file.name, attachment.file.size)) ? t("compose.trackedFileOn") : t("compose.trackedFileOff")}>
+							<button
+								type="button"
+								aria-label={t("compose.trackedFile")}
+								aria-pressed={trackedFiles.has(trackedFileKey(attachment.file.name, attachment.file.size))}
+								onClick={() => toggleTrackedFile(trackedFileKey(attachment.file.name, attachment.file.size))}
+								className={cn("rounded-full p-1 hover:bg-neutral-200", trackedFiles.has(trackedFileKey(attachment.file.name, attachment.file.size)) ? "text-blue-600" : "text-neutral-500")}
+							>
+								<Link2 className="h-3.5 w-3.5" />
+							</button>
+						</Tooltip>
+					)}
 					<button
 						type="button"
 						onClick={() =>

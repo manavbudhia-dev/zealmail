@@ -5,6 +5,8 @@ export interface AttachmentContent {
 	disposition?: "attachment" | "inline";
 	filename: string;
 	type: string;
+	/** Send as a download link instead of attached, so opening it is click-tracked (needs `trackOpens`). */
+	tracked?: boolean;
 }
 
 export interface AttachmentMetadata {

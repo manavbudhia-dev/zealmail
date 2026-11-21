@@ -32,6 +32,9 @@ export function buildSendFormData(input: {
 	trackOpens?: boolean;
 	/** Send each recipient their own tracked copy, so opens and clicks are counted per person. */
 	separateCopies?: boolean;
+	/** Positions in `attachments`, and stored draft attachment ids, to send as click-tracked links. */
+	trackedAttachments?: number[];
+	trackedDraftAttachments?: string[];
 	/** Remind the sender after this many days without a reply. */
 	followUpDays?: number | null;
 }): FormData {
@@ -52,6 +55,10 @@ export function buildSendFormData(input: {
 	else if (input.undoSend) form.set("undoSend", "true");
 	if (input.trackOpens) form.set("trackOpens", "true");
 	if (input.trackOpens && input.separateCopies) form.set("separateCopies", "true");
+	if (input.trackOpens) {
+		for (const position of input.trackedAttachments ?? []) form.append("trackedAttachments", String(position));
+		for (const id of input.trackedDraftAttachments ?? []) form.append("trackedDraftAttachments", id);
+	}
 	if (input.followUpDays) form.set("followUpDays", String(input.followUpDays));
 	for (const attachment of input.attachments) {
 		form.append("attachments", attachment.file);

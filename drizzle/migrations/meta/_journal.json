@@ -568,6 +568,13 @@
       "when": 1793280384889,
       "tag": "0089_message_tracking_recipients",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1793280385889,
+      "tag": "0090_user_tracking_preferences",
+      "breakpoints": true
     }
   ]
 }

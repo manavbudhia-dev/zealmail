@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { usePageLoading } from "@/components/page-loading";
 import { PreviousMessage } from "@/components/previous-message";
 import { ConversationThread } from "@/components/messages/conversation-thread";
+import { MessageOpenStatus } from "@/components/messages/message-open-status";
+import { MessageFollowUpStatus } from "@/components/follow-ups/message-follow-up-status";
 import { getConversationSender } from "@/components/messages/conversation-thread-utils";
 import { ConversationNotes } from "@/components/messages/conversation-notes";
 import { ThreadSummary } from "@/components/messages/thread-summary";
@@ -426,6 +428,12 @@ function MessageDetailContent({ messageId }: { messageId: string }) {
           {detailsOpen && (
             <div className="mb-4 px-4 sm:px-0 sm:pl-[78px] sm:pr-4">
               <MessageDetailsPanel message={message} onClose={() => setDetailsOpen(false)} />
+            </div>
+          )}
+          {message.direction === "outbound" && message.status !== "draft" && !scheduledAt && (
+            <div className="px-4 sm:px-0 sm:pl-[78px]">
+              <MessageOpenStatus messageId={message.id} />
+              <MessageFollowUpStatus messageId={message.id} />
             </div>
           )}
           {scheduledAt && <div className="px-4 sm:px-0 sm:pl-[78px]"><ScheduledSendBanner messageId={message.id} scheduledAt={scheduledAt} onRescheduled={(next) => setData((current) => current ? { ...current, scheduledAt: next } : current)} /></div>}

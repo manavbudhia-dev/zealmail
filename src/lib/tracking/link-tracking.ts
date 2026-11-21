@@ -3,6 +3,8 @@ import { getDb } from "@/db";
 import { messageLinkClicks, messageLinks, messageTracking, messages } from "@/db/schema";
 import { newId } from "@/lib/ids";
 import { classifyClick, MAX_STORED_CLICKS } from "./link-tracking-utils";
+import { getSharedFileNames } from "./shared-file-names";
+import { notifyTrackingEvent } from "./alerts";
 import { createTrackingToken, isDuplicateOpen } from "./open-tracking-utils";
 import type { MessageLinkSummary } from "./types";
 
@@ -37,7 +39,7 @@ export async function recordClick(
 ): Promise<string | null> {
 	const db = getDb(env);
 	const [link] = await db
-		.select({ url: messageLinks.url, sentAt: messageTracking.createdAt, direction: messages.direction })
+		.select({ url: messageLinks.url, token: messageLinks.token, sentAt: messageTracking.createdAt, direction: messages.direction })
 		.from(messageLinks)
 		.innerJoin(messageTracking, eq(messageTracking.token, messageLinks.token))
 		.innerJoin(messages, eq(messages.id, messageTracking.messageId))
@@ -68,6 +70,7 @@ export async function recordClick(
 					lastClickedAt: clickedAt,
 				})
 				.where(eq(messageLinks.id, linkId));
+			await notifyTrackingEvent(env, { kind: "click", token: link.token, url: link.url });
 		}
 	} catch (error) {
 		// The recipient still reaches the link when bookkeeping fails.
@@ -93,6 +96,7 @@ export async function getLinkSummaries(env: CloudflareEnv, tokens: string[]): Pr
 		.where(and(inArray(messageLinkClicks.linkId, links.map((link) => link.id)), eq(messageLinkClicks.automated, true)))
 		.groupBy(messageLinkClicks.linkId);
 	const automatedByLink = new Map(automated.map((row) => [row.linkId, Number(row.total)]));
+	const fileNames = await getSharedFileNames(env, links.map((link) => link.url));
 	for (const link of links) {
 		const list = byToken.get(link.token) ?? [];
 		list.push({
@@ -100,6 +104,7 @@ export async function getLinkSummaries(env: CloudflareEnv, tokens: string[]): Pr
 			clickCount: link.clickCount,
 			lastClickedAt: link.lastClickedAt?.toISOString() ?? null,
 			automatedClicks: automatedByLink.get(link.id) ?? 0,
+			...(fileNames.has(link.url) ? { fileName: fileNames.get(link.url) } : {}),
 		});
 		byToken.set(link.token, list);
 	}

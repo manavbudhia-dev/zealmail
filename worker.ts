@@ -37,6 +37,7 @@ import { runAccountRetention } from "./src/lib/accounts/deletion";
 import { runJmapChangeRetention } from "./src/lib/jmap/changes";
 import { runFollowUpReminders } from "./src/lib/follow-ups/service";
 import { runCalendarReminders } from "./src/lib/calendar/reminders";
+import { runTrackingSummaries } from "./src/lib/tracking/summaries";
 import { sweepOutboundJobs } from "./src/lib/email/send";
 export { RealtimeHub } from "./src/lib/realtime/hub";
 
@@ -167,6 +168,7 @@ export default {
 		// Drive trash is emptied once a day, with the 02:00 UTC cron; the 5-minute cron is for queue-like upkeep.
 		if (controller.cron === "0 2 * * *") ctx.waitUntil(runDriveTrashRetention(env, new Date(controller.scheduledTime)));
 		if (controller.cron === "0 2 * * *") ctx.waitUntil(runJmapChangeRetention(env, new Date(controller.scheduledTime)));
+		if (controller.cron === "0 2 * * *") ctx.waitUntil(runTrackingSummaries(env, new Date(controller.scheduledTime)).catch((error) => console.error("Read-receipt summaries failed", error)));
 		if (controller.cron === "0 2 * * *") ctx.waitUntil(sweepOrphanedRawMail(env, new Date(controller.scheduledTime)).catch((error) => console.error("Raw mail sweep failed", error)));
 	},
 } satisfies ExportedHandler<CloudflareEnv>;

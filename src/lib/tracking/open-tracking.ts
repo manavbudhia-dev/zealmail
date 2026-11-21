@@ -7,6 +7,7 @@ import { classifyOpen, createTrackingToken, isDuplicateOpen, MAX_STORED_OPENS } 
 import type { MessageLinkSummary, MessageTickState, MessageTrackingState, MessageTrackingSummary } from "./types";
 import { isMissingColumnError, isMissingTableError } from "@/lib/database-errors";
 import { getClickTotals, getLinkSummaries } from "./link-tracking";
+import { notifyTrackingEvent } from "./alerts";
 
 /**
  * Returns the pixel token of one copy of a message, creating it on the first delivery attempt.
@@ -75,6 +76,7 @@ export async function recordOpen(
 			lastOpenedAt: openedAt,
 		})
 		.where(eq(messageTracking.token, token));
+	await notifyTrackingEvent(env, { kind: "open", token });
 }
 
 export async function getMessageTrackingSummary(env: CloudflareEnv, messageId: string): Promise<MessageTrackingSummary | null> {

@@ -60,6 +60,8 @@ export type MessageLinkSummary = {
 	lastClickedAt: string | null;
 	/** Fetches by link scanners and other automated clients, not counted above. */
 	automatedClicks: number;
+	/** Set when the link is a tracked file: the attachment's name. */
+	fileName?: string;
 };
 
 /** How far a tracked message got, as the list's ticks show it. */

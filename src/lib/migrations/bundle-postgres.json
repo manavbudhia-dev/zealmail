@@ -382,6 +382,14 @@
         "DROP INDEX \"message_tracking_message_idx\";",
         "CREATE INDEX \"message_tracking_provider_message_idx\" ON \"message_tracking\" USING btree (\"provider_message_id\");"
       ]
+    },
+    {
+      "name": "0014_user_tracking_preferences.sql",
+      "statements": [
+        "CREATE TABLE \"user_tracking_preferences\" (\n\t\"user_id\" text PRIMARY KEY NOT NULL,\n\t\"hot_open_threshold\" bigint DEFAULT 3 NOT NULL,\n\t\"telegram_chat_id\" text,\n\t\"telegram_link_code\" text,\n\t\"telegram_link_expires_at\" bigint,\n\t\"telegram_opens\" boolean DEFAULT true NOT NULL,\n\t\"telegram_clicks\" boolean DEFAULT true NOT NULL,\n\t\"summary_frequency\" text DEFAULT 'off' NOT NULL,\n\t\"summary_last_sent_at\" bigint,\n\t\"updated_at\" bigint NOT NULL\n);",
+        "ALTER TABLE \"user_tracking_preferences\" ADD CONSTRAINT \"user_tracking_preferences_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+        "CREATE UNIQUE INDEX \"user_tracking_preferences_link_code_idx\" ON \"user_tracking_preferences\" USING btree (\"telegram_link_code\");"
+      ]
     }
   ]
 }

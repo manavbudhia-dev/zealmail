@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Link2, Reply, Users } from "@/components/icons";
+import { Eye, EyeOff, Link2, Paperclip, Reply, Users } from "@/components/icons";
 import { useLanguage } from "@/components/language-provider";
 import { formatUserDate } from "@/lib/time/utils";
 import type { MessageLinkSummary, MessageRecipientTracking, MessageTrackingState, MessageTrackingSummary } from "@/lib/tracking/types";
@@ -110,7 +110,7 @@ function LinkClicks({ links }: { links: MessageLinkSummary[] }) {
 				{links.map((link) => (
 					<li key={link.url} className={`flex min-w-0 gap-1.5 ${link.clickCount > 0 ? "" : "text-neutral-400"}`}>
 						<a href={link.url} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate hover:underline" title={link.url}>
-							{displayLinkUrl(link.url)}
+							{link.fileName ? <><Paperclip className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />{link.fileName}</> : displayLinkUrl(link.url)}
 						</a>
 						<span className="shrink-0">
 							{link.clickCount > 0 && link.lastClickedAt

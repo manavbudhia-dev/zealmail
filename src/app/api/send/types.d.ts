@@ -22,6 +22,8 @@ export interface SendRequestPayload {
 	trackOpens?: boolean;
 	/** Send each recipient their own tracked copy. */
 	separateCopies?: boolean;
+	/** Stored draft attachments to send as click-tracked links. */
+	trackedDraftAttachments?: string[];
 	/** Remind the sender after this many days without a reply. */
 	followUpDays?: number;
 }

@@ -9,6 +9,7 @@ import { runCalendarReminders } from "@/lib/calendar/reminders";
 import { sweepImportJobs } from "@/lib/import/jobs";
 import { sweepOrphanedRawMail } from "@/lib/email/raw-sweeper";
 import { sweepOutboundJobs } from "@/lib/email/send";
+import { runTrackingSummaries } from "@/lib/tracking/summaries";
 
 /** Fire the daily 02:00 UTC backup and the recurring maintenance jobs, matching the cron triggers in wrangler.jsonc. */
 export function startScheduler(env: CloudflareEnv) {
@@ -29,6 +30,7 @@ export function startScheduler(env: CloudflareEnv) {
 		runAccountRetention(env, now).catch((error) => console.error("Account retention failed", error));
 		runJmapChangeRetention(env, now).catch((error) => console.error("JMAP change retention failed", error));
 		sweepOrphanedRawMail(env, now).catch((error) => console.error("Raw mail sweep failed", error));
+		runTrackingSummaries(env, now).catch((error) => console.error("Read-receipt summaries failed", error));
 	}, 60_000);
 	return () => clearInterval(timer);
 }

@@ -28,6 +28,16 @@ export function parseLinkId(segment: string): string | null {
 	return LINK_ID_PATTERN.test(segment) ? segment : null;
 }
 
+/** The share id of a `/api/shared-files/<id>` download link, the form tracked files are sent in. */
+export function parseSharedFileId(url: string): string | null {
+	try {
+		const match = /^\/api\/shared-files\/([A-Za-z0-9_-]{1,64})$/.exec(new URL(url).pathname);
+		return match ? decodeURIComponent(match[1]) : null;
+	} catch {
+		return null;
+	}
+}
+
 export function buildTrackedLinkUrl(origin: string, linkId: string): string {
 	return `${origin.replace(/\/+$/, "")}/api/l/${linkId}`;
 }

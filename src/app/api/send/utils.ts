@@ -23,13 +23,18 @@ export async function parseSendRequest(request: Request): Promise<SendRequestPay
 
 	const form = await readFormDataBody(request, MAX_SEND_REQUEST_SIZE);
 	const attachments: AttachmentContent[] = [];
+	// Positions (among the uploaded files, in order) the composer marked as tracked links.
+	const tracked = new Set(form.getAll("trackedAttachments").map((value) => Number(value)));
+	let position = -1;
 	for (const value of form.getAll("attachments")) {
+		position += 1;
 		if (!(value instanceof File) || value.size === 0) continue;
 		attachments.push({
 			filename: value.name,
 			type: value.type || "application/octet-stream",
 			content: await value.arrayBuffer(),
 			disposition: "attachment",
+			...(tracked.has(position) ? { tracked: true } : {}),
 		});
 	}
 
@@ -46,6 +51,7 @@ export async function parseSendRequest(request: Request): Promise<SendRequestPay
 		undoSend: form.get("undoSend") === "true",
 		trackOpens: form.get("trackOpens") === "true",
 		separateCopies: form.get("separateCopies") === "true",
+		trackedDraftAttachments: form.getAll("trackedDraftAttachments").filter((value): value is string => typeof value === "string"),
 		followUpDays: parseFollowUpDays(form.get("followUpDays")) ?? undefined,
 		subject: String(form.get("subject") ?? ""),
 		text: getOptionalFormValue(form, "text"),

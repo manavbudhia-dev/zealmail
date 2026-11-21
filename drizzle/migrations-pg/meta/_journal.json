@@ -99,6 +99,13 @@
       "when": 1793280384890,
       "tag": "0013_message_tracking_recipients",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793280385890,
+      "tag": "0014_user_tracking_preferences",
+      "breakpoints": true
     }
   ]
 }

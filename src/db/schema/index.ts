@@ -608,6 +608,22 @@ export const userComposePreferences = sqliteTable("user_compose_preferences", {
 	updatedAt: timestamp("updated_at").notNull().$defaultFn(() => new Date()),
 });
 
+/** Per-user read-receipt alerts: the "opened N times" follow-up, a linked Telegram chat and summary emails. */
+export const userTrackingPreferences = sqliteTable("user_tracking_preferences", {
+	userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+	/** Real opens after which an unanswered message is due for a follow-up; 0 turns it off. */
+	hotOpenThreshold: integer("hot_open_threshold").notNull().default(3),
+	telegramChatId: text("telegram_chat_id"),
+	/** One-time code the user sends the bot with /start; cleared once the chat is linked. */
+	telegramLinkCode: text("telegram_link_code"),
+	telegramLinkExpiresAt: timestamp("telegram_link_expires_at"),
+	telegramOpens: bool("telegram_opens").notNull().default(true),
+	telegramClicks: bool("telegram_clicks").notNull().default(true),
+	summaryFrequency: text("summary_frequency", { enum: ["off", "daily", "weekly"] }).notNull().default("off"),
+	summaryLastSentAt: timestamp("summary_last_sent_at"),
+	updatedAt: timestamp("updated_at").notNull().$defaultFn(() => new Date()),
+}, (t) => [uniqueIndex("user_tracking_preferences_link_code_idx").on(t.telegramLinkCode)]);
+
 /**
  * "Remind me if there is no reply": a sent message whose thread comes back to the
  * inbox at `dueAt` unless an inbound message joined the thread after it.
