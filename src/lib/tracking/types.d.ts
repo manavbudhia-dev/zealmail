@@ -16,7 +16,11 @@ export type OpenClassification = {
 	automated: boolean;
 };
 
-export type MessageOpenEvent = OpenClassification & { openedAt: string };
+export type MessageOpenEvent = OpenClassification & {
+	openedAt: string;
+	/** Whose copy was opened, when the message went out as separate copies. */
+	recipient?: string | null;
+};
 
 export type MessageTrackingSummary = {
 	openCount: number;
@@ -28,6 +32,16 @@ export type MessageTrackingSummary = {
 	/** Real clicks across all links; a click also proves the message was read. */
 	clickCount: number;
 	links: MessageLinkSummary[];
+	/** One entry per recipient when the message went out as separate copies; empty otherwise. */
+	recipients: MessageRecipientTracking[];
+};
+
+export type MessageRecipientTracking = {
+	recipient: string;
+	state: MessageTickState;
+	openCount: number;
+	clickCount: number;
+	lastOpenedAt: string | null;
 };
 
 export type ClickRequestInfo = {
@@ -55,4 +69,7 @@ export type MessageTrackingState = {
 	state: MessageTickState;
 	opens: number;
 	clicks: number;
+	/** Separate copies only: how many recipients got one, and how many of them opened it or clicked. */
+	recipients?: number;
+	openedBy?: number;
 };

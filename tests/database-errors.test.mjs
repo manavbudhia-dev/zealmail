@@ -51,12 +51,12 @@ test("message lists with sent mail keep working before migration 0068", async (t
 	assert.equal(states.size, 0);
 });
 
-async function migratedDatabase(t, { withoutLinks = false } = {}) {
+async function migratedDatabase(t, { withoutLinks = false, skip = withoutLinks ? ["0088_", "0089_"] : [] } = {}) {
 	const directory = join(root, "drizzle/migrations");
 	let source = directory;
-	if (withoutLinks) {
+	if (skip.length) {
 		source = mkdtempSync(join(outDir, "migrations-"));
-		for (const name of readdirSync(directory).filter((file) => file.endsWith(".sql") && !file.startsWith("0088_"))) {
+		for (const name of readdirSync(directory).filter((file) => file.endsWith(".sql") && !skip.some((prefix) => file.startsWith(prefix)))) {
 			copyFileSync(join(directory, name), join(source, name));
 		}
 	}
@@ -88,6 +88,16 @@ test("tick states work before the click-tracking migration", async (t) => {
 	const summary = await getMessageTrackingSummary(env, "sent");
 	assert.deepEqual(summary.links, []);
 	assert.equal(summary.clickCount, 0);
+});
+
+test("tick states and summaries work before the per-recipient migration", async (t) => {
+	const { env, database, message } = await migratedDatabase(t, { skip: ["0089_"] });
+	message("sent", "outbound", 100);
+	database.db.exec(`INSERT INTO message_tracking (token, message_id, open_count, last_opened_at, created_at) VALUES ('t-sent', 'sent', 1, 150, 100);`);
+	assert.deepEqual((await getTrackingStates(env, ["sent"])).get("sent"), { state: "opened", opens: 1, clicks: 0 });
+	const summary = await getMessageTrackingSummary(env, "sent");
+	assert.equal(summary.openCount, 1);
+	assert.deepEqual(summary.recipients, []);
 });
 
 test("a real click marks a message opened and redirects to the stored target", async (t) => {

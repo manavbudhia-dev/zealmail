@@ -1,6 +1,6 @@
 import { authFetch } from "@/lib/auth/client";
 import type { Translator } from "@/lib/i18n/utils";
-import type { MessageOpenEvent, MessageTrackingState, MessageTrackingSummary } from "@/lib/tracking/types";
+import type { MessageOpenEvent, MessageRecipientTracking, MessageTrackingState, MessageTrackingSummary } from "@/lib/tracking/types";
 
 export async function fetchMessageTracking(messageId: string): Promise<MessageTrackingSummary | null> {
 	const res = await authFetch(`/api/messages/${messageId}/opens`, { cache: "no-store" });
@@ -29,10 +29,21 @@ export function describeTicks(tracking: MessageTrackingState | undefined, replie
 	if (tracking?.state === "sent") parts.push(t("list.ticks.sent"));
 	if (tracking?.state === "possible") parts.push(t("list.ticks.possible"));
 	if (tracking?.state === "opened") {
-		if (tracking.opens > 0) parts.push(t("list.opened", { count: tracking.opens }));
+		if (tracking.recipients) parts.push(t("list.openedBy", { opened: tracking.openedBy ?? 0, total: tracking.recipients }));
+		else if (tracking.opens > 0) parts.push(t("list.opened", { count: tracking.opens }));
 		if (tracking.clicks > 0) parts.push(t("list.clicked", { count: tracking.clicks }));
 	}
 	if (replied) parts.push(t("list.replied"));
+	return parts.join(" · ");
+}
+
+/** One recipient's line in the message view, e.g. "Opened 2× · Links clicked: 1". */
+export function describeRecipientTracking(recipient: MessageRecipientTracking, t: Translator): string {
+	if (recipient.state === "sent") return t("list.ticks.sent");
+	if (recipient.state === "possible") return t("list.ticks.possible");
+	const parts: string[] = [];
+	if (recipient.openCount > 0) parts.push(t("list.opened", { count: recipient.openCount }));
+	if (recipient.clickCount > 0) parts.push(t("list.clicked", { count: recipient.clickCount }));
 	return parts.join(" · ");
 }
 

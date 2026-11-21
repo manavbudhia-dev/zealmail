@@ -76,26 +76,34 @@ export async function recordClick(
 	return link.url;
 }
 
-export async function getLinkSummaries(env: CloudflareEnv, token: string): Promise<MessageLinkSummary[]> {
+/** Links of the given copies, by tracking token, in the order they appear in the message. */
+export async function getLinkSummaries(env: CloudflareEnv, tokens: string[]): Promise<Map<string, MessageLinkSummary[]>> {
+	const byToken = new Map<string, MessageLinkSummary[]>();
+	if (tokens.length === 0) return byToken;
 	const db = getDb(env);
 	const links = await db
-		.select({ id: messageLinks.id, url: messageLinks.url, clickCount: messageLinks.clickCount, lastClickedAt: messageLinks.lastClickedAt })
+		.select({ id: messageLinks.id, token: messageLinks.token, url: messageLinks.url, clickCount: messageLinks.clickCount, lastClickedAt: messageLinks.lastClickedAt })
 		.from(messageLinks)
-		.where(eq(messageLinks.token, token))
+		.where(inArray(messageLinks.token, tokens))
 		.orderBy(messageLinks.createdAt);
-	if (links.length === 0) return [];
+	if (links.length === 0) return byToken;
 	const automated = await db
 		.select({ linkId: messageLinkClicks.linkId, total: sql<number>`count(*)` })
 		.from(messageLinkClicks)
 		.where(and(inArray(messageLinkClicks.linkId, links.map((link) => link.id)), eq(messageLinkClicks.automated, true)))
 		.groupBy(messageLinkClicks.linkId);
 	const automatedByLink = new Map(automated.map((row) => [row.linkId, Number(row.total)]));
-	return links.map((link) => ({
-		url: link.url,
-		clickCount: link.clickCount,
-		lastClickedAt: link.lastClickedAt?.toISOString() ?? null,
-		automatedClicks: automatedByLink.get(link.id) ?? 0,
-	}));
+	for (const link of links) {
+		const list = byToken.get(link.token) ?? [];
+		list.push({
+			url: link.url,
+			clickCount: link.clickCount,
+			lastClickedAt: link.lastClickedAt?.toISOString() ?? null,
+			automatedClicks: automatedByLink.get(link.id) ?? 0,
+		});
+		byToken.set(link.token, list);
+	}
+	return byToken;
 }
 
 /** Real and automated click totals per tracking token. */

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Link2, Reply } from "@/components/icons";
+import { Eye, EyeOff, Link2, Reply, Users } from "@/components/icons";
 import { useLanguage } from "@/components/language-provider";
 import { formatUserDate } from "@/lib/time/utils";
-import type { MessageLinkSummary, MessageTrackingState, MessageTrackingSummary } from "@/lib/tracking/types";
-import { describeOpenEvent, describeTicks, displayLinkUrl, fetchMessageTracking } from "./message-open-status-utils";
+import type { MessageLinkSummary, MessageRecipientTracking, MessageTrackingState, MessageTrackingSummary } from "@/lib/tracking/types";
+import { describeOpenEvent, describeRecipientTracking, describeTicks, displayLinkUrl, fetchMessageTracking } from "./message-open-status-utils";
 
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" };
 
@@ -35,6 +35,7 @@ export function MessageOpenStatus({ messageId }: { messageId: string }) {
 						? t("message.opens.viaClick")
 						: tracking.onlyAutomated ? t("message.opens.onlyAutomated") : t("message.opens.notYet")}
 				</p>
+				<RecipientList recipients={tracking.recipients} />
 				<LinkClicks links={tracking.links} />
 			</div>
 		);
@@ -56,7 +57,8 @@ export function MessageOpenStatus({ messageId }: { messageId: string }) {
 						return (
 							<li key={event.openedAt} className={event.automated ? "text-neutral-400" : undefined}>
 								<time dateTime={event.openedAt}>{formatUserDate(event.openedAt, DATE_FORMAT)}</time>
-								{description && <span> · {description}</span>}
+								{event.recipient && <span> · {event.recipient}</span>}
+							{description && <span> · {description}</span>}
 								{event.automated && <span> · {t("message.opens.automated")}</span>}
 							</li>
 						);
@@ -64,8 +66,32 @@ export function MessageOpenStatus({ messageId }: { messageId: string }) {
 				</ul>
 				<p className="mt-2 text-neutral-400">{t("message.opens.caveat")}</p>
 			</details>
+			<RecipientList recipients={tracking.recipients} />
 			<LinkClicks links={tracking.links} />
 		</div>
+	);
+}
+
+/** Who opened a message sent as separate copies; nothing for a shared copy. */
+function RecipientList({ recipients }: { recipients: MessageRecipientTracking[] }) {
+	const { t } = useLanguage();
+	if (recipients.length === 0) return null;
+	return (
+		<details className="mt-1.5 text-neutral-600" open={recipients.length <= 5}>
+			<summary className="flex cursor-pointer list-none items-center gap-1.5 text-neutral-700 [&::-webkit-details-marker]:hidden">
+				<Users className="h-3.5 w-3.5" aria-hidden />
+				{t("message.recipients.title")}
+			</summary>
+			<ul className="mt-2 space-y-1 border-l border-neutral-200 pl-3">
+				{recipients.map((recipient) => (
+					<li key={recipient.recipient} className="flex min-w-0 items-center gap-1.5">
+						<MessageTicks tracking={{ state: recipient.state, opens: recipient.openCount, clicks: recipient.clickCount }} />
+						<span className="min-w-0 truncate">{recipient.recipient}</span>
+						<span className={`shrink-0 ${recipient.state === "opened" ? "" : "text-neutral-400"}`}>· {describeRecipientTracking(recipient, t)}</span>
+					</li>
+				))}
+			</ul>
+		</details>
 	);
 }
 

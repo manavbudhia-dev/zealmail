@@ -347,6 +347,16 @@
         "CREATE INDEX `message_links_token_idx` ON `message_links` (`token`);",
         "CREATE INDEX `message_link_clicks_link_idx` ON `message_link_clicks` (`link_id`,`clicked_at`);"
       ]
+    },
+    {
+      "name": "0013_message_tracking_recipients.sql",
+      "statements": [
+        "ALTER TABLE `message_tracking` ADD `recipient` varchar(191) NOT NULL DEFAULT '';",
+        "ALTER TABLE `message_tracking` ADD `provider_message_id` varchar(512);",
+        "ALTER TABLE `message_tracking` ADD CONSTRAINT `message_tracking_message_recipient_idx` UNIQUE(`message_id`,`recipient`);",
+        "ALTER TABLE `message_tracking` DROP INDEX `message_tracking_message_idx`;",
+        "CREATE INDEX `message_tracking_provider_message_idx` ON `message_tracking` (`provider_message_id`);"
+      ]
     }
   ]
 }

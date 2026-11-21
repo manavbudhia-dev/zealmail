@@ -92,6 +92,13 @@
       "when": 1793280383890,
       "tag": "0012_message_link_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793280384890,
+      "tag": "0013_message_tracking_recipients",
+      "breakpoints": true
     }
   ]
 }

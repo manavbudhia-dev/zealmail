@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { BellRing, ChevronUp, Eye, EyeOff, FileText, Forward, Maximize2, Minimize2, Minus, Paperclip, Reply, Trash2, X } from "@/components/icons";
+import { BellRing, ChevronUp, Eye, EyeOff, FileText, Forward, Maximize2, Minimize2, Minus, Paperclip, Reply, Trash2, Users, X } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,8 @@ export function ComposeForm({
 	const [deletingDraft, setDeletingDraft] = useState(false);
 	const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
 	const [trackOpens, setTrackOpens] = useTrackOpens();
+	const [separateCopies, setSeparateCopies] = useState(false);
+	const recipientCount = to.length + cc.length + bcc.length;
 	const [followUpDays, setFollowUpDays] = useState<number | null>(null);
 	const [loadedDraftMailboxId, setLoadedDraftMailboxId] = useState<string | null>(null);
 	const [loadedDraftFrom, setLoadedDraftFrom] = useState<string | null>(null);
@@ -408,6 +410,7 @@ export function ComposeForm({
 					scheduledAt,
 					undoSend: true,
 					trackOpens,
+					separateCopies: separateCopies && recipientCount > 1,
 					followUpDays,
 				}),
 			});
@@ -987,6 +990,23 @@ export function ComposeForm({
 									{trackOpens ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
 								</button>
 							</Tooltip>
+							{trackOpens && recipientCount > 1 && (
+								<Tooltip label={separateCopies ? t("compose.separateCopiesOn") : t("compose.separateCopiesOff")}>
+									<button
+										type="button"
+										aria-label={t("compose.separateCopies")}
+										aria-pressed={separateCopies}
+										onClick={() => setSeparateCopies(!separateCopies)}
+										disabled={loading || loadingDraft}
+										className={cn(
+											"rounded-md p-1.5 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-50 max-md:px-2",
+											separateCopies ? "text-blue-600 hover:text-blue-700" : "text-neutral-500 hover:text-neutral-900",
+										)}
+									>
+										<Users className="h-4 w-4" />
+									</button>
+								</Tooltip>
+							)}
 							<Tooltip label={followUpDays ? t("followUp.remindOn", { when: t(followUpOptionKey(followUpDays)) }) : t("followUp.remindMe")}>
 								<FollowUpMenu
 									disabled={loading || loadingDraft}

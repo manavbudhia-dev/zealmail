@@ -515,19 +515,29 @@ export const outboundJobs = sqliteTable("outbound_jobs", {
 	index("outbound_jobs_message_idx").on(t.messageId),
 ]);
 
-/** One row per sent message that carries an open-tracking pixel; the token is the pixel URL's secret. */
+/**
+ * One row per tracked copy of a sent message; the token is the pixel URL's secret. A message sent as one
+ * copy has a single row with an empty `recipient`; one sent as separate copies has a row per recipient.
+ */
 export const messageTracking = sqliteTable(
 	"message_tracking",
 	{
 		token: text("token").primaryKey(),
 		messageId: text("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+		/** Lower-case address of the copy's only recipient, or empty when every recipient got the same copy. */
+		recipient: text("recipient").notNull().default(""),
+		/** Message-ID the provider gave this copy; set once it is out, so a retried delivery skips it and replies to it thread. */
+		providerMessageId: text("provider_message_id"),
 		/** Opens that were not classified as automated prefetches. */
 		openCount: integer("open_count").notNull().default(0),
 		firstOpenedAt: timestamp("first_opened_at"),
 		lastOpenedAt: timestamp("last_opened_at"),
 		createdAt: timestamp("created_at").notNull().$defaultFn(() => new Date()),
 	},
-	(t) => [uniqueIndex("message_tracking_message_idx").on(t.messageId)],
+	(t) => [
+		uniqueIndex("message_tracking_message_recipient_idx").on(t.messageId, t.recipient),
+		index("message_tracking_provider_message_idx").on(t.providerMessageId),
+	],
 );
 
 /** Hostname under a domain that serves its read-receipt pixels, so the pixel matches the sender. Kept out of `domains` so sending works before the migration. */

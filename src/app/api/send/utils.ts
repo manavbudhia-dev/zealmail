@@ -45,6 +45,7 @@ export async function parseSendRequest(request: Request): Promise<SendRequestPay
 		scheduledAt: getOptionalFormValue(form, "scheduledAt"),
 		undoSend: form.get("undoSend") === "true",
 		trackOpens: form.get("trackOpens") === "true",
+		separateCopies: form.get("separateCopies") === "true",
 		followUpDays: parseFollowUpDays(form.get("followUpDays")) ?? undefined,
 		subject: String(form.get("subject") ?? ""),
 		text: getOptionalFormValue(form, "text"),
