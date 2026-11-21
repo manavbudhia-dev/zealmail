@@ -25,4 +25,34 @@ export type MessageTrackingSummary = {
 	/** True when the only fetches so far were automated, e.g. Apple Mail Privacy Protection. */
 	onlyAutomated: boolean;
 	opens: MessageOpenEvent[];
+	/** Real clicks across all links; a click also proves the message was read. */
+	clickCount: number;
+	links: MessageLinkSummary[];
+};
+
+export type ClickRequestInfo = {
+	method: string;
+	userAgent: string | null;
+	country?: string | null;
+	city?: string | null;
+	sentAt: Date;
+	clickedAt: Date;
+};
+
+export type MessageLinkSummary = {
+	url: string;
+	/** Clicks that were not classified as automated. */
+	clickCount: number;
+	lastClickedAt: string | null;
+	/** Fetches by link scanners and other automated clients, not counted above. */
+	automatedClicks: number;
+};
+
+/** How far a tracked message got, as the list's ticks show it. */
+export type MessageTickState = "sent" | "possible" | "opened";
+
+export type MessageTrackingState = {
+	state: MessageTickState;
+	opens: number;
+	clicks: number;
 };

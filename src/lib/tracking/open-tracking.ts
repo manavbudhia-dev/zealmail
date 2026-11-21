@@ -1,11 +1,12 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { getEmailAddress } from "@/lib/email/address";
 import { getDb } from "@/db";
 import { domains, domainTrackingHosts, messageOpens, messageTracking, messages } from "@/db/schema";
 import { newId } from "@/lib/ids";
 import { classifyOpen, createTrackingToken, isDuplicateOpen, MAX_STORED_OPENS } from "./open-tracking-utils";
-import type { MessageTrackingSummary } from "./types";
+import type { MessageLinkSummary, MessageTrackingState, MessageTrackingSummary } from "./types";
 import { isMissingTableError } from "@/lib/database-errors";
+import { getClickTotals, getLinkSummaries } from "./link-tracking";
 
 /** Returns the message's pixel token, creating it on the first delivery attempt. */
 export async function ensureTrackingToken(env: CloudflareEnv, messageId: string): Promise<string> {
@@ -69,6 +70,7 @@ export async function getMessageTrackingSummary(env: CloudflareEnv, messageId: s
 		.where(eq(messageOpens.token, tracking.token))
 		.orderBy(desc(messageOpens.openedAt))
 		.limit(MAX_STORED_OPENS);
+	const links = await optionalLinkData(() => getLinkSummaries(env, tracking.token), [] as MessageLinkSummary[]);
 	return {
 		openCount: tracking.openCount,
 		firstOpenedAt: tracking.firstOpenedAt?.toISOString() ?? null,
@@ -82,24 +84,59 @@ export async function getMessageTrackingSummary(env: CloudflareEnv, messageId: s
 			city: row.city,
 			automated: row.automated,
 		})),
+		clickCount: links.reduce((total, link) => total + link.clickCount, 0),
+		links,
 	};
 }
 
-/** Open counts for the given messages; messages without a pixel are absent from the map. */
-export async function getOpenCounts(env: CloudflareEnv, messageIds: string[]): Promise<Map<string, number>> {
-	const counts = new Map<string, number>();
-	if (messageIds.length === 0) return counts;
+/** Link tables arrive in a later migration than the pixel; without them a message simply has no clicks. */
+async function optionalLinkData<T>(read: () => Promise<T>, fallback: T): Promise<T> {
 	try {
-		const rows = await getDb(env)
-			.select({ messageId: messageTracking.messageId, openCount: messageTracking.openCount })
+		return await read();
+	} catch (error) {
+		if (isMissingTableError(error)) return fallback;
+		throw error;
+	}
+}
+
+/**
+ * Tick state of each tracked message: opened once a person opened it or clicked a link,
+ * possible when only automated fetches arrived, sent otherwise. Untracked messages are absent.
+ */
+export async function getTrackingStates(env: CloudflareEnv, messageIds: string[]): Promise<Map<string, MessageTrackingState>> {
+	const states = new Map<string, MessageTrackingState>();
+	if (messageIds.length === 0) return states;
+	const db = getDb(env);
+	let rows: Array<{ messageId: string; token: string; openCount: number }>;
+	try {
+		rows = await db
+			.select({ messageId: messageTracking.messageId, token: messageTracking.token, openCount: messageTracking.openCount })
 			.from(messageTracking)
 			.where(inArray(messageTracking.messageId, messageIds));
-		for (const row of rows) counts.set(row.messageId, row.openCount);
 	} catch (error) {
 		// Lists keep working before migration 0068 is applied.
-		if (!isMissingTableError(error)) throw error;
+		if (isMissingTableError(error)) return states;
+		throw error;
 	}
-	return counts;
+	if (rows.length === 0) return states;
+	const tokens = rows.map((row) => row.token);
+	const unopened = rows.filter((row) => row.openCount === 0).map((row) => row.token);
+	const [clickTotals, automatedOpens] = await Promise.all([
+		optionalLinkData(() => getClickTotals(env, tokens), new Map<string, { clicks: number; automated: number }>()),
+		unopened.length > 0
+			? db.selectDistinct({ token: messageOpens.token }).from(messageOpens).where(inArray(messageOpens.token, unopened))
+			: [],
+	]);
+	const tokensWithAutomatedOpens = new Set(automatedOpens.map((row) => row.token));
+	for (const row of rows) {
+		const clicks = clickTotals.get(row.token);
+		const clickCount = clicks?.clicks ?? 0;
+		const state = row.openCount > 0 || clickCount > 0
+			? "opened"
+			: tokensWithAutomatedOpens.has(row.token) || (clicks?.automated ?? 0) > 0 ? "possible" : "sent";
+		states.set(row.messageId, { state, opens: row.openCount, clicks: clickCount });
+	}
+	return states;
 }
 
 /** The pixel hostname configured for the sender's domain, if any. */
@@ -157,4 +194,38 @@ export class TrackingHostsUnavailableError extends Error {
 		super("Apply pending database migrations to set a read-receipt address");
 		this.name = "TrackingHostsUnavailableError";
 	}
+}
+
+/** Sent messages answered by a later inbound message in the same conversation and mailbox. */
+export async function getRepliedMessageIds(
+	env: CloudflareEnv,
+	sent: Array<{ id: string; mailboxId: string | null; threadId: string | null; createdAt: Date | string }>,
+): Promise<Set<string>> {
+	const replied = new Set<string>();
+	const candidates = sent.filter((row): row is typeof row & { mailboxId: string; threadId: string } => !!row.mailboxId && !!row.threadId);
+	if (candidates.length === 0) return replied;
+	const rows = await getDb(env)
+		.select({ mailboxId: messages.mailboxId, threadId: messages.threadId, latest: sql<number | string | Date>`max(${messages.createdAt})` })
+		.from(messages)
+		.where(and(
+			eq(messages.direction, "inbound"),
+			inArray(messages.threadId, Array.from(new Set(candidates.map((row) => row.threadId)))),
+			inArray(messages.mailboxId, Array.from(new Set(candidates.map((row) => row.mailboxId)))),
+			notInArray(messages.status, ["spam", "draft"]),
+		))
+		.groupBy(messages.mailboxId, messages.threadId);
+	const latestReply = new Map(rows.map((row) => [`${row.mailboxId}:${row.threadId}`, toSeconds(row.latest)]));
+	for (const row of candidates) {
+		const latest = latestReply.get(`${row.mailboxId}:${row.threadId}`);
+		if (latest !== undefined && latest > toSeconds(row.createdAt)) replied.add(row.id);
+	}
+	return replied;
+}
+
+/** Raw aggregates come back as stored (seconds), drizzle columns as Dates or ISO strings. */
+function toSeconds(value: number | string | Date | null): number {
+	if (value === null) return 0;
+	if (value instanceof Date) return Math.floor(value.getTime() / 1000);
+	if (typeof value === "number") return value;
+	return /^\d+$/.test(value) ? Number(value) : Math.floor(Date.parse(value) / 1000);
 }

@@ -74,7 +74,7 @@ export function injectTrackingPixel(html: string, pixelUrl: string): string {
 	return bodyClose === -1 ? `${html}${img}` : `${html.slice(0, bodyClose)}${img}${html.slice(bodyClose)}`;
 }
 
-function detectDevice(userAgent: string): string | null {
+export function detectDevice(userAgent: string): string | null {
 	if (/iPhone/i.test(userAgent)) return "iPhone";
 	if (/iPad/i.test(userAgent)) return "iPad";
 	if (/Android/i.test(userAgent)) return "Android";
@@ -85,7 +85,7 @@ function detectDevice(userAgent: string): string | null {
 	return null;
 }
 
-function detectClient(userAgent: string): { client: string | null; proxied: boolean } {
+export function detectClient(userAgent: string): { client: string | null; proxied: boolean } {
 	if (/GoogleImageProxy|ggpht\.com/i.test(userAgent)) return { client: "Gmail", proxied: true };
 	if (/YahooMailProxy/i.test(userAgent)) return { client: "Yahoo Mail", proxied: true };
 	if (/Mailflare-Remote-Images/i.test(userAgent)) return { client: "ZealMail", proxied: true };

@@ -361,6 +361,17 @@
       "statements": [
         "ALTER TABLE \"messages\" ADD COLUMN \"invite_response\" text;"
       ]
+    },
+    {
+      "name": "0012_message_link_tracking.sql",
+      "statements": [
+        "CREATE TABLE \"message_links\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"token\" text NOT NULL,\n\t\"url\" text NOT NULL,\n\t\"click_count\" bigint DEFAULT 0 NOT NULL,\n\t\"first_clicked_at\" bigint,\n\t\"last_clicked_at\" bigint,\n\t\"created_at\" bigint NOT NULL\n);",
+        "CREATE TABLE \"message_link_clicks\" (\n\t\"id\" text PRIMARY KEY NOT NULL,\n\t\"link_id\" text NOT NULL,\n\t\"clicked_at\" bigint NOT NULL,\n\t\"client\" text,\n\t\"device\" text,\n\t\"country\" text,\n\t\"city\" text,\n\t\"automated\" boolean DEFAULT false NOT NULL\n);",
+        "ALTER TABLE \"message_links\" ADD CONSTRAINT \"message_links_token_message_tracking_token_fk\" FOREIGN KEY (\"token\") REFERENCES \"public\".\"message_tracking\"(\"token\") ON DELETE cascade ON UPDATE no action;",
+        "ALTER TABLE \"message_link_clicks\" ADD CONSTRAINT \"message_link_clicks_link_id_message_links_id_fk\" FOREIGN KEY (\"link_id\") REFERENCES \"public\".\"message_links\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+        "CREATE INDEX \"message_links_token_idx\" ON \"message_links\" USING btree (\"token\");",
+        "CREATE INDEX \"message_link_clicks_link_idx\" ON \"message_link_clicks\" USING btree (\"link_id\",\"clicked_at\");"
+      ]
     }
   ]
 }

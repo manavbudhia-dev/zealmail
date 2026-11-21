@@ -556,6 +556,37 @@ export const messageOpens = sqliteTable(
 	(t) => [index("message_opens_token_idx").on(t.token, t.openedAt)],
 );
 
+/** One row per distinct link in a tracked message; the id is the click URL's secret, so the redirect target is never taken from the request. */
+export const messageLinks = sqliteTable(
+	"message_links",
+	{
+		id: text("id").primaryKey(),
+		token: text("token").notNull().references(() => messageTracking.token, { onDelete: "cascade" }),
+		url: text("url").notNull(),
+		/** Clicks that were not classified as automated (link scanners, prefetches). */
+		clickCount: integer("click_count").notNull().default(0),
+		firstClickedAt: timestamp("first_clicked_at"),
+		lastClickedAt: timestamp("last_clicked_at"),
+		createdAt: timestamp("created_at").notNull().$defaultFn(() => new Date()),
+	},
+	(t) => [index("message_links_token_idx").on(t.token)],
+);
+
+export const messageLinkClicks = sqliteTable(
+	"message_link_clicks",
+	{
+		id: text("id").primaryKey(),
+		linkId: text("link_id").notNull().references(() => messageLinks.id, { onDelete: "cascade" }),
+		clickedAt: timestamp("clicked_at").notNull(),
+		client: text("client"),
+		device: text("device"),
+		country: text("country"),
+		city: text("city"),
+		automated: bool("automated").notNull().default(false),
+	},
+	(t) => [index("message_link_clicks_link_idx").on(t.linkId, t.clickedAt)],
+);
+
 /**
  * Per-user composer defaults. Kept out of `users` because every session
  * lookup selects the whole users row, which would fail before the migration.

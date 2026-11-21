@@ -336,6 +336,17 @@
       "statements": [
         "ALTER TABLE `messages` ADD `invite_response` text;"
       ]
+    },
+    {
+      "name": "0012_message_link_tracking.sql",
+      "statements": [
+        "CREATE TABLE `message_links` (\n\t`id` varchar(191) NOT NULL,\n\t`token` varchar(191) NOT NULL,\n\t`url` longtext NOT NULL,\n\t`click_count` bigint NOT NULL DEFAULT 0,\n\t`first_clicked_at` bigint,\n\t`last_clicked_at` bigint,\n\t`created_at` bigint NOT NULL,\n\tCONSTRAINT `message_links_id` PRIMARY KEY(`id`)\n);",
+        "CREATE TABLE `message_link_clicks` (\n\t`id` varchar(191) NOT NULL,\n\t`link_id` varchar(191) NOT NULL,\n\t`clicked_at` bigint NOT NULL,\n\t`client` longtext,\n\t`device` longtext,\n\t`country` longtext,\n\t`city` longtext,\n\t`automated` boolean NOT NULL DEFAULT false,\n\tCONSTRAINT `message_link_clicks_id` PRIMARY KEY(`id`)\n);",
+        "ALTER TABLE `message_links` ADD CONSTRAINT `message_links_token_message_tracking_token_fk` FOREIGN KEY (`token`) REFERENCES `message_tracking`(`token`) ON DELETE cascade ON UPDATE no action;",
+        "ALTER TABLE `message_link_clicks` ADD CONSTRAINT `message_link_clicks_link_id_message_links_id_fk` FOREIGN KEY (`link_id`) REFERENCES `message_links`(`id`) ON DELETE cascade ON UPDATE no action;",
+        "CREATE INDEX `message_links_token_idx` ON `message_links` (`token`);",
+        "CREATE INDEX `message_link_clicks_link_idx` ON `message_link_clicks` (`link_id`,`clicked_at`);"
+      ]
     }
   ]
 }

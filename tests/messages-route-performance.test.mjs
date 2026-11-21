@@ -16,7 +16,7 @@ const mocks = {
 	"@/lib/cloudflare": "export function getEnv() { return globalThis.messagesRouteFixture.env; }",
 	"@/lib/auth/cookies": "export async function getCurrentUser() { return globalThis.messagesRouteFixture.user; }",
 	"@/lib/contacts/service": "export function getContactDisplayNameMap(env, userId, addresses) { return globalThis.messagesRouteFixture.contacts(userId, addresses); }",
-	"@/lib/tracking/open-tracking": "export function getOpenCounts(env, ids) { return globalThis.messagesRouteFixture.opens(ids); }",
+	"@/lib/tracking/open-tracking": "export function getTrackingStates(env, ids) { return globalThis.messagesRouteFixture.opens(ids); } export function getRepliedMessageIds(env, rows) { return globalThis.messagesRouteFixture.replies(rows); }",
 };
 await build({
 	entryPoints: {
@@ -77,7 +77,11 @@ async function fixture(t) {
 		},
 		async opens(ids) {
 			await this.read("opens");
-			return new Map(ids.map((id) => [id, 3]));
+			return new Map(ids.map((id) => [id, { state: "opened", opens: 3, clicks: 1 }]));
+		},
+		async replies(rows) {
+			await this.read("replies");
+			return new Set(rows.map((row) => row.id));
 		},
 		message(id, { mailbox = "mine", user = "owner", thread = "thread", status = "received", direction = "inbound", read = false, time = 1, fromAddr = "friend@example.com", toAddr = "friend@example.com" } = {}) {
 			database.db.prepare(`INSERT INTO messages (id, user_id, mailbox_id, direction, from_addr, to_addr, status, read, thread_id, snippet, text_body, html_body, raw_r2_key, created_at)
@@ -194,12 +198,14 @@ test("ungrouped total and page reads start together", async (t) => {
 test("thread, schedule, tracking and contact enrichment reads overlap", async (t) => {
 	const f = await fixture(t);
 	schedule(f);
-	const body = await holdReads(f, ["threads", "jobs", "opens", "contacts:owner"], () => {
-		for (const label of ["threads", "jobs", "opens", "contacts:owner"]) assert.ok(f.started.includes(label), `${label} must start before other enrichment resolves`);
+	const body = await holdReads(f, ["threads", "jobs", "opens", "replies", "contacts:owner"], () => {
+		for (const label of ["threads", "jobs", "opens", "replies", "contacts:owner"]) assert.ok(f.started.includes(label), `${label} must start before other enrichment resolves`);
 	});
 	const [message] = body.messages;
 	assert.equal(message.scheduledAt, "2033-05-18T03:33:20.000Z");
 	assert.equal(message.openCount, 3);
+	assert.deepEqual(message.tracking, { state: "opened", opens: 3, clicks: 1 });
+	assert.equal(message.replied, true);
 	assert.equal(message.fromContactName, "Owner");
 	assert.equal(message.toContactName, "Friend of owner");
 	assert.equal(message.snippet, "preview");

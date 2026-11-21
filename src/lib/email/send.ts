@@ -15,6 +15,8 @@ import { getOutboundAttachmentMaxMb } from "@/lib/email/attachment-policy";
 import { getOutboundProviderConfig, sendThroughProvider } from "@/lib/email/outbound-provider";
 import { prepareCloudflareAttachments } from "@/lib/email/cloud-attachment-utils";
 import { ensureTrackingToken, getTrackingHostForSender } from "@/lib/tracking/open-tracking";
+import { ensureTrackedLinks } from "@/lib/tracking/link-tracking";
+import { buildTrackedLinkUrl, extractTrackableLinks, rewriteTrackedLinks } from "@/lib/tracking/link-tracking-utils";
 import { setFollowUp } from "@/lib/follow-ups/service";
 import { buildTrackingPixelUrl, injectTrackingPixel, resolveTrackingOrigin } from "@/lib/tracking/open-tracking-utils";
 import { getComposePreferences } from "@/lib/compose/preferences";
@@ -332,8 +334,9 @@ async function deliverEmail(env: CloudflareEnv, delivery: PreparedDelivery): Pro
 }
 
 /**
- * The sender domain's own pixel host wins over APP_URL so the pixel matches the From domain.
- * A missing origin or an unapplied migration sends the message untracked rather than failing it.
+ * The sender domain's own pixel host wins over APP_URL so the pixel and click links match the From domain.
+ * A missing origin or an unapplied migration sends the message untracked rather than failing it;
+ * links stay untouched when only the click-tracking migration is missing.
  */
 async function withTrackingPixel(env: CloudflareEnv, messageId: string, from: string, html: string, publicOrigin: string | undefined): Promise<string> {
 	try {
@@ -341,9 +344,20 @@ async function withTrackingPixel(env: CloudflareEnv, messageId: string, from: st
 		const origin = host ? `https://${host}` : resolveTrackingOrigin(env.APP_URL, publicOrigin);
 		if (!origin) return html;
 		const token = await ensureTrackingToken(env, messageId);
-		return injectTrackingPixel(html, buildTrackingPixelUrl(origin, token));
+		return injectTrackingPixel(await withTrackedLinks(env, token, origin, html), buildTrackingPixelUrl(origin, token));
 	} catch (error) {
 		console.error("Read receipt skipped", error);
+		return html;
+	}
+}
+
+async function withTrackedLinks(env: CloudflareEnv, token: string, origin: string, html: string): Promise<string> {
+	try {
+		const ids = await ensureTrackedLinks(env, token, extractTrackableLinks(html));
+		const tracked = new Map([...ids].map(([url, id]) => [url, buildTrackedLinkUrl(origin, id)]));
+		return rewriteTrackedLinks(html, tracked);
+	} catch (error) {
+		console.error("Click tracking skipped", error);
 		return html;
 	}
 }
