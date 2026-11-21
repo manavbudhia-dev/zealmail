@@ -6,7 +6,7 @@ import { newId } from "@/lib/ids";
 import { classifyOpen, createTrackingToken, isDuplicateOpen, MAX_STORED_OPENS } from "./open-tracking-utils";
 import type { MessageLinkSummary, MessageTickState, MessageTrackingState, MessageTrackingSummary } from "./types";
 import { isMissingColumnError, isMissingTableError } from "@/lib/database-errors";
-import { getClickTotals, getLinkSummaries } from "./link-tracking";
+import { getClickTotals, getLinkSummaries, type ClickTotals } from "./link-tracking";
 import { notifyTrackingEvent } from "./alerts";
 
 /**
@@ -187,7 +187,7 @@ export async function getTrackingStates(env: CloudflareEnv, messageIds: string[]
 	const states = new Map<string, MessageTrackingState>();
 	if (messageIds.length === 0) return states;
 	const db = getDb(env);
-	let rows: Array<{ messageId: string; token: string; openCount: number; recipient: string }>;
+	let rows: Array<{ messageId: string; token: string; openCount: number; recipient: string; lastOpenedAt: Date | null }>;
 	try {
 		rows = await selectStateRows(env, messageIds);
 	} catch (error) {
@@ -199,7 +199,7 @@ export async function getTrackingStates(env: CloudflareEnv, messageIds: string[]
 	const tokens = rows.map((row) => row.token);
 	const unopened = rows.filter((row) => row.openCount === 0).map((row) => row.token);
 	const [clickTotals, automatedOpens] = await Promise.all([
-		optionalLinkData(() => getClickTotals(env, tokens), new Map<string, { clicks: number; automated: number }>()),
+		optionalLinkData(() => getClickTotals(env, tokens), new Map<string, ClickTotals>()),
 		unopened.length > 0
 			? db.selectDistinct({ token: messageOpens.token }).from(messageOpens).where(inArray(messageOpens.token, unopened))
 			: [],
@@ -211,14 +211,16 @@ export async function getTrackingStates(env: CloudflareEnv, messageIds: string[]
 		const clickCount = clicks?.clicks ?? 0;
 		const state = tickState(row.openCount, clickCount, tokensWithAutomatedOpens.has(row.token) || (clicks?.automated ?? 0) > 0);
 		const previous = states.get(row.messageId);
+		const lastActivityAt = latestIso(row.lastOpenedAt, clicks?.lastClickedAt ?? null);
 		if (!row.recipient) {
-			states.set(row.messageId, { state, opens: row.openCount, clicks: clickCount });
+			states.set(row.messageId, { state, opens: row.openCount, clicks: clickCount, lastActivityAt });
 			continue;
 		}
 		// Separate copies: the ticks show the furthest any recipient got, plus how many opened.
-		const merged: MessageTrackingState = previous ?? { state: "sent", opens: 0, clicks: 0, recipients: 0, openedBy: 0 };
+		const merged: MessageTrackingState = previous ?? { state: "sent", opens: 0, clicks: 0, recipients: 0, openedBy: 0, lastActivityAt: null };
 		merged.opens += row.openCount;
 		merged.clicks += clickCount;
+		if (lastActivityAt && (!merged.lastActivityAt || lastActivityAt > merged.lastActivityAt)) merged.lastActivityAt = lastActivityAt;
 		merged.recipients = (merged.recipients ?? 0) + 1;
 		if (state === "opened") merged.openedBy = (merged.openedBy ?? 0) + 1;
 		if (rank[state] > rank[merged.state]) merged.state = state;
@@ -227,9 +229,15 @@ export async function getTrackingStates(env: CloudflareEnv, messageIds: string[]
 	return states;
 }
 
+/** The later of two optional times, as ISO text. */
+function latestIso(...values: Array<Date | null>): string | null {
+	const times = values.filter((value): value is Date => !!value).map((value) => value.getTime());
+	return times.length ? new Date(Math.max(...times)).toISOString() : null;
+}
+
 async function selectStateRows(env: CloudflareEnv, messageIds: string[]) {
 	const db = getDb(env);
-	const columns = { messageId: messageTracking.messageId, token: messageTracking.token, openCount: messageTracking.openCount };
+	const columns = { messageId: messageTracking.messageId, token: messageTracking.token, openCount: messageTracking.openCount, lastOpenedAt: messageTracking.lastOpenedAt };
 	try {
 		return await db.select({ ...columns, recipient: messageTracking.recipient }).from(messageTracking).where(inArray(messageTracking.messageId, messageIds));
 	} catch (error) {
