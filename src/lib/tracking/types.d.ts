@@ -74,4 +74,6 @@ export type MessageTrackingState = {
 	/** Separate copies only: how many recipients got one, and how many of them opened it or clicked. */
 	recipients?: number;
 	openedBy?: number;
+	/** The latest real open or click, for the ticks' tooltip; null before any. */
+	lastActivityAt?: string | null;
 };

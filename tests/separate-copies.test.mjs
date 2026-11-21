@@ -107,7 +107,7 @@ test("each recipient gets a copy addressed only to them, with its own pixel and 
 	// Opens are counted per recipient: Bob opens his copy.
 	const bobToken = pixels[1];
 	database.db.prepare("UPDATE message_tracking SET open_count = 2, last_opened_at = 999999999 WHERE token = ?").run(bobToken);
-	assert.deepEqual((await getTrackingStates(env, [messageId])).get(messageId), { state: "opened", opens: 2, clicks: 0, recipients: 3, openedBy: 1 });
+	assert.deepEqual((await getTrackingStates(env, [messageId])).get(messageId), { state: "opened", opens: 2, clicks: 0, recipients: 3, openedBy: 1, lastActivityAt: "2001-09-09T01:46:39.000Z" });
 	const summary = await getMessageTrackingSummary(env, messageId);
 	assert.equal(summary.openCount, 2);
 	assert.deepEqual(summary.recipients.map((recipient) => [recipient.recipient, recipient.state, recipient.openCount]), [

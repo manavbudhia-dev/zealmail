@@ -105,6 +105,20 @@ test("tick labels describe state, opens, clicks and replies", () => {
 	assert.equal(links.describeTicks({ state: "opened", opens: 2, clicks: 1 }, false, t), `list.opened{"count":2} · list.clicked{"count":1}`);
 	assert.equal(links.describeTicks({ state: "opened", opens: 0, clicks: 3 }, false, t), `list.clicked{"count":3}`);
 	assert.equal(links.describeTicks(undefined, true, t), "list.replied");
+	const date = (iso) => `@${iso.slice(11, 16)}`;
+	assert.equal(
+		links.describeTicks({ state: "opened", opens: 1, clicks: 0, lastActivityAt: "2026-11-21T18:30:00.000Z" }, false, t, date),
+		`message.opens.opened{"count":1,"date":"@18:30"}`,
+		"the tooltip says when it was last opened",
+	);
+	assert.equal(
+		links.describeTicks({ state: "opened", opens: 0, clicks: 2, lastActivityAt: "2026-11-21T18:31:00.000Z" }, true, t, date),
+		`list.clicked{"count":2} · @18:31 · list.replied`,
+	);
+	assert.equal(
+		links.describeTicks({ state: "opened", opens: 3, clicks: 0, recipients: 3, openedBy: 2, lastActivityAt: "2026-11-21T18:32:00.000Z" }, false, t, date),
+		`list.openedBy{"opened":2,"total":3} · @18:32`,
+	);
 });
 
 test("link URLs are shortened for display", () => {

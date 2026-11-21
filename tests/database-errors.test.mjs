@@ -82,8 +82,8 @@ test("tick states work before the click-tracking migration", async (t) => {
 		INSERT INTO message_opens (id, token, opened_at, automated) VALUES ('o1', 't-probed', 101, 1);
 	`);
 	const states = await getTrackingStates(env, ["sent", "probed", "untracked"]);
-	assert.deepEqual(states.get("sent"), { state: "sent", opens: 0, clicks: 0 });
-	assert.deepEqual(states.get("probed"), { state: "possible", opens: 0, clicks: 0 });
+	assert.deepEqual(states.get("sent"), { state: "sent", opens: 0, clicks: 0, lastActivityAt: null });
+	assert.deepEqual(states.get("probed"), { state: "possible", opens: 0, clicks: 0, lastActivityAt: null });
 	assert.equal(states.has("untracked"), false);
 	const summary = await getMessageTrackingSummary(env, "sent");
 	assert.deepEqual(summary.links, []);
@@ -94,7 +94,7 @@ test("tick states and summaries work before the per-recipient migration", async 
 	const { env, database, message } = await migratedDatabase(t, { skip: ["0089_"] });
 	message("sent", "outbound", 100);
 	database.db.exec(`INSERT INTO message_tracking (token, message_id, open_count, last_opened_at, created_at) VALUES ('t-sent', 'sent', 1, 150, 100);`);
-	assert.deepEqual((await getTrackingStates(env, ["sent"])).get("sent"), { state: "opened", opens: 1, clicks: 0 });
+	assert.deepEqual((await getTrackingStates(env, ["sent"])).get("sent"), { state: "opened", opens: 1, clicks: 0, lastActivityAt: "1970-01-01T00:02:30.000Z" });
 	const summary = await getMessageTrackingSummary(env, "sent");
 	assert.equal(summary.openCount, 1);
 	assert.deepEqual(summary.recipients, []);
@@ -110,10 +110,12 @@ test("a real click marks a message opened and redirects to the stored target", a
 
 	const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 	assert.equal(await recordClick(env, ids.get("https://example.com/b"), { method: "HEAD", userAgent: chrome }), "https://example.com/b");
-	assert.deepEqual((await getTrackingStates(env, ["sent"])).get("sent"), { state: "possible", opens: 0, clicks: 0 });
+	assert.deepEqual((await getTrackingStates(env, ["sent"])).get("sent"), { state: "possible", opens: 0, clicks: 0, lastActivityAt: null });
 	assert.equal(await recordClick(env, ids.get("https://example.com/a"), { method: "GET", userAgent: chrome, country: "CH" }), "https://example.com/a");
 	assert.equal(await recordClick(env, ids.get("https://example.com/a"), { method: "GET", userAgent: chrome, country: "CH" }), "https://example.com/a", "a duplicate click still redirects");
-	assert.deepEqual((await getTrackingStates(env, ["sent"])).get("sent"), { state: "opened", opens: 0, clicks: 1 });
+	const clicked = (await getTrackingStates(env, ["sent"])).get("sent");
+	assert.deepEqual({ ...clicked, lastActivityAt: undefined }, { state: "opened", opens: 0, clicks: 1, lastActivityAt: undefined });
+	assert.ok(Math.abs(Date.parse(clicked.lastActivityAt) - Date.now()) < 60_000, "a click is the latest activity");
 	assert.equal(await recordClick(env, "unknownunknownunknown0", { method: "GET", userAgent: chrome }), null);
 
 	const summary = await getMessageTrackingSummary(env, "sent");

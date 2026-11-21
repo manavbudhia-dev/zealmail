@@ -8,6 +8,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   Archive,
+  Activity,
   CalendarClock,
   ChevronDown,
   Clock,
@@ -63,6 +64,7 @@ const links = [
   { href: "/snoozed", labelKey: "navigation.snoozed", icon: Clock, preloadMessages: true },
   { href: "/sent", labelKey: "navigation.sent", icon: Send, preloadMessages: true },
   { href: "/scheduled", labelKey: "navigation.scheduled", icon: CalendarClock, preloadMessages: true },
+  { href: "/tracking", labelKey: "navigation.tracking", icon: Activity },
   { href: "/drafts", labelKey: "navigation.drafts", icon: FileText, preloadMessages: true },
   {
     href: "/archived",

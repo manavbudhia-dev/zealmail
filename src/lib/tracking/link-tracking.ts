@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { messageLinkClicks, messageLinks, messageTracking, messages } from "@/db/schema";
 import { newId } from "@/lib/ids";
@@ -111,14 +111,16 @@ export async function getLinkSummaries(env: CloudflareEnv, tokens: string[]): Pr
 	return byToken;
 }
 
+export type ClickTotals = { clicks: number; automated: number; lastClickedAt: Date | null };
+
 /** Real and automated click totals per tracking token. */
-export async function getClickTotals(env: CloudflareEnv, tokens: string[]): Promise<Map<string, { clicks: number; automated: number }>> {
-	const totals = new Map<string, { clicks: number; automated: number }>();
+export async function getClickTotals(env: CloudflareEnv, tokens: string[]): Promise<Map<string, ClickTotals>> {
+	const totals = new Map<string, ClickTotals>();
 	if (tokens.length === 0) return totals;
 	const db = getDb(env);
 	const [clickRows, automatedRows] = await Promise.all([
 		db
-			.select({ token: messageLinks.token, clicks: sql<number>`sum(${messageLinks.clickCount})` })
+			.select({ token: messageLinks.token, clicks: sql<number>`sum(${messageLinks.clickCount})`, lastClickedAt: max(messageLinks.lastClickedAt) })
 			.from(messageLinks)
 			.where(inArray(messageLinks.token, tokens))
 			.groupBy(messageLinks.token),
@@ -129,9 +131,9 @@ export async function getClickTotals(env: CloudflareEnv, tokens: string[]): Prom
 			.where(and(inArray(messageLinks.token, tokens), eq(messageLinkClicks.automated, true)))
 			.groupBy(messageLinks.token),
 	]);
-	for (const row of clickRows) totals.set(row.token, { clicks: Number(row.clicks ?? 0), automated: 0 });
+	for (const row of clickRows) totals.set(row.token, { clicks: Number(row.clicks ?? 0), automated: 0, lastClickedAt: row.lastClickedAt ?? null });
 	for (const row of automatedRows) {
-		const entry = totals.get(row.token) ?? { clicks: 0, automated: 0 };
+		const entry = totals.get(row.token) ?? { clicks: 0, automated: 0, lastClickedAt: null };
 		entry.automated = Number(row.total);
 		totals.set(row.token, entry);
 	}

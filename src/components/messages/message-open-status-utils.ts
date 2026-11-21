@@ -24,14 +24,24 @@ export function describeOpenEvent(event: MessageOpenEvent, locale: string): stri
 }
 
 /** Accessible label for a row's ticks, e.g. "Opened 2× · Links clicked: 1 · Replied". */
-export function describeTicks(tracking: MessageTrackingState | undefined, replied: boolean | undefined, t: Translator): string {
+export function describeTicks(
+	tracking: MessageTrackingState | undefined,
+	replied: boolean | undefined,
+	t: Translator,
+	formatDate: (iso: string) => string = (iso) => iso,
+): string {
 	const parts: string[] = [];
 	if (tracking?.state === "sent") parts.push(t("list.ticks.sent"));
 	if (tracking?.state === "possible") parts.push(t("list.ticks.possible"));
 	if (tracking?.state === "opened") {
+		const date = tracking.lastActivityAt ? formatDate(tracking.lastActivityAt) : null;
 		if (tracking.recipients) parts.push(t("list.openedBy", { opened: tracking.openedBy ?? 0, total: tracking.recipients }));
+		// "Opened 2× · last Nov 21, 06:30 PM"
+		else if (tracking.opens > 0 && date) parts.push(t("message.opens.opened", { count: tracking.opens, date }));
 		else if (tracking.opens > 0) parts.push(t("list.opened", { count: tracking.opens }));
 		if (tracking.clicks > 0) parts.push(t("list.clicked", { count: tracking.clicks }));
+		// The time of the latest open or click when the line above did not already carry it.
+		if (date && (tracking.recipients || tracking.opens === 0)) parts.push(date);
 	}
 	if (replied) parts.push(t("list.replied"));
 	return parts.join(" · ");

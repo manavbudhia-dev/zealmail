@@ -138,7 +138,7 @@ const TICK_COLORS: Record<MessageTrackingState["state"], string> = {
 export function MessageTicks({ tracking, replied }: { tracking?: MessageTrackingState; replied?: boolean }) {
 	const { t } = useLanguage();
 	if (!tracking && !replied) return null;
-	const label = describeTicks(tracking, replied, t);
+	const label = describeTicks(tracking, replied, t, (iso) => formatUserDate(iso, DATE_FORMAT));
 	return (
 		<span className="mr-1 inline-flex items-center gap-0.5 align-[-2px]" role="img" aria-label={label} title={label}>
 			{tracking && (

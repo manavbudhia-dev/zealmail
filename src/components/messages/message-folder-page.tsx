@@ -96,6 +96,8 @@ function MessageListRowComponent({
 }: MessageListRowProps) {
 	const { t } = useLanguage();
 	const Icon = config.icon;
+	// Archive/trash/read/snooze buttons replace the timestamp on hover, so only those rows hide it.
+	const hasRowActions = (config.folder === "inbox" || config.folder === "snoozed") && message.direction === "inbound";
 	const [read, setRead] = useState(message.read);
 	const [threadUnread, setThreadUnread] = useState(message.threadUnread);
 	const [starred, setStarred] = useState(message.starred);
@@ -309,7 +311,7 @@ function MessageListRowComponent({
 			</span>
 			<time
 				dateTime={message.createdAt}
-				className={`min-w-[80px] whitespace-nowrap text-right text-xs group-hover:opacity-0 ${unread ? "font-bold text-[#1f1f1f]" : "text-[#5f6368]"
+				className={`min-w-[80px] whitespace-nowrap text-right text-xs ${hasRowActions ? "group-hover:opacity-0" : ""} ${unread ? "font-bold text-[#1f1f1f]" : "text-[#5f6368]"
 					}`}
 			>
 				<MessageTicks tracking={message.tracking} replied={message.replied} />
@@ -349,7 +351,7 @@ function MessageListRowComponent({
 				aria-label={t("list.selectFrom", { sender: party })}
 			/>
 			{content}
-			{(config.folder === "inbox" || config.folder === "snoozed") && message.direction === "inbound" && (
+			{hasRowActions && (
 				<MessageListRowActions
 					message={rowMessage}
 					onAction={runRowAction}
